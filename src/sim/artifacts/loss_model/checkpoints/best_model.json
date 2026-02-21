@@ -5,6 +5,6 @@
   "cnn_path": "/root/StimIQ/src/sim/artifacts/loss_model/checkpoints/cnn_model.pt",
   "val_mse": {
     "xgboost": 0.2487276251562034,
-    "cnn": 0.21499512578762128
+    "cnn": 0.2142158338269318
   }
 }
