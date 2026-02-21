@@ -1,0 +1,13 @@
+samples: 16
+amp:
+  low: 0.2
+  high: 1.2
+freq_hz:
+  low: 50.0
+  high: 160.0
+pw_s:
+  low: 0.00004
+  high: 0.00012
+phase_rad:
+  low: 0.0
+  high: 6.283185307179586
