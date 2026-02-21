@@ -18,3 +18,32 @@ class PatientResponse(BaseModel):
     date_of_birth: Optional[date]
     notes: Optional[str]
     created_at: datetime
+<<<<<<< HEAD
+=======
+
+
+class PatientDetailResponse(PatientResponse):
+    """Extended patient information for detail view"""
+    # Contact Information
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    
+    # Demographics
+    gender: Optional[str] = None
+    
+    # DBS Treatment Information
+    diagnosis_date: Optional[date] = None
+    implant_date: Optional[date] = None
+    device_model: Optional[str] = None
+    device_serial: Optional[str] = None
+    lead_location: Optional[str] = None
+    
+    # Clinical Team
+    primary_physician: Optional[str] = None
+    care_coordinator: Optional[str] = None
+    
+    # Treatment Status
+    treatment_status: Optional[str] = None  # active, monitoring, adjustment_needed
+    last_programming_date: Optional[date] = None
+    next_appointment: Optional[date] = None
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df

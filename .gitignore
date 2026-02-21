@@ -3,4 +3,10 @@
 *.python-version
 *uv.lock
 *.egg-info
+<<<<<<< HEAD
 *.csv
+=======
+*.csv
+*PADS
+src/backend/uv.lock
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
