@@ -93,7 +93,7 @@ export function ClinicianPatientDetail() {
         <PatientDetailView patient={patient} />
 
         {/* DBS State Section */}
-        <DbsStateSection patientId={patient.id} />
+        <DbsStateSection patientId={patient.id} patient={patient} />
 
         {/* DBS Tuning Section */}
         <DbsTuningSection patientId={patient.id} />

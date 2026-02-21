@@ -1,5 +1,6 @@
 import type { PatientDetail } from '../../lib/types';
 import { Card } from '../../components/common/Card';
+import { CollapsibleSection } from '../../components/common/CollapsibleSection';
 import { InfoRow } from '../../components/common/InfoRow';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
@@ -64,69 +65,31 @@ export function PatientDetailView({ patient }: PatientDetailViewProps) {
         )}
       </div>
 
-      {/* Demographics & Contact */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Card className="p-3">
-          <h2 className="text-sm font-bold text-text-main mb-2 flex items-center">
-            <svg className="w-4 h-4 mr-1.5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            Demographics
-          </h2>
-          <div className="space-y-1 text-xs">
-            <InfoRow label="Date of Birth" value={formatDate(patient.date_of_birth)} />
-            {age && <InfoRow label="Age" value={`${age} years`} />}
-            <InfoRow label="Gender" value={patient.gender || '—'} />
-            <InfoRow label="Patient Since" value={formatDate(patient.created_at)} />
+      {/* Patient Information */}
+      <CollapsibleSection title="Patient information" defaultOpen={true}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-text-muted">Demographics</p>
+            <InfoRow density="compact" label="Date of Birth" value={formatDate(patient.date_of_birth)} />
+            {age && <InfoRow density="compact" label="Age" value={`${age} years`} />}
+            <InfoRow density="compact" label="Gender" value={patient.gender || '—'} />
+            <InfoRow density="compact" label="Patient Since" value={formatDate(patient.created_at)} />
           </div>
-        </Card>
-
-        <Card className="p-3">
-          <h2 className="text-sm font-bold text-text-main mb-2 flex items-center">
-            <svg className="w-4 h-4 mr-1.5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            Contact
-          </h2>
-          <div className="space-y-1 text-xs">
-            <InfoRow label="Email" value={patient.email || '—'} />
-            <InfoRow label="Phone" value={patient.phone || '—'} />
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-text-muted">Contact</p>
+            <InfoRow density="compact" label="Email" value={patient.email || '—'} />
+            <InfoRow density="compact" label="Phone" value={patient.phone || '—'} />
           </div>
-        </Card>
-      </div>
-
-      {/* DBS Device Information */}
-      <Card className="p-3">
-        <h2 className="text-sm font-bold text-text-main mb-2 flex items-center">
-          <svg className="w-4 h-4 mr-1.5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-          </svg>
-          DBS Device
-        </h2>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <InfoRow label="Model" value={patient.device_model || '—'} />
-          <InfoRow label="Serial #" value={patient.device_serial || '—'} />
-          <InfoRow label="Lead Location" value={patient.lead_location || '—'} />
-          <InfoRow label="Implant Date" value={formatDate(patient.implant_date)} />
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-text-muted">Clinical</p>
+            <InfoRow density="compact" label="Diagnosis Date" value={formatDate(patient.diagnosis_date)} />
+            <InfoRow density="compact" label="Physician" value={patient.primary_physician || '—'} />
+            <InfoRow density="compact" label="Coordinator" value={patient.care_coordinator || '—'} />
+            <InfoRow density="compact" label="Last Program" value={formatDate(patient.last_programming_date)} />
+            <InfoRow density="compact" label="Next Appt" value={formatDate(patient.next_appointment)} />
+          </div>
         </div>
-      </Card>
-
-      {/* Clinical Information */}
-      <Card className="p-3">
-        <h2 className="text-sm font-bold text-text-main mb-2 flex items-center">
-          <svg className="w-4 h-4 mr-1.5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-          Clinical
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-          <InfoRow label="Diagnosis Date" value={formatDate(patient.diagnosis_date)} />
-          <InfoRow label="Physician" value={patient.primary_physician || '—'} />
-          <InfoRow label="Coordinator" value={patient.care_coordinator || '—'} />
-          <InfoRow label="Last Program" value={formatDate(patient.last_programming_date)} />
-          <InfoRow label="Next Appt" value={formatDate(patient.next_appointment)} />
-        </div>
-      </Card>
+      </CollapsibleSection>
 
       {/* Notes Section */}
       {patient.notes && (

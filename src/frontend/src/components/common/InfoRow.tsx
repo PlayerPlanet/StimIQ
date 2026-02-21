@@ -4,12 +4,18 @@ interface InfoRowProps {
   label: string;
   value: ReactNode;
   variant?: 'default' | 'highlight';
+  density?: 'default' | 'compact';
 }
 
 /**
  * InfoRow component - displays a label/value pair consistently
  */
-export function InfoRow({ label, value, variant = 'default' }: InfoRowProps) {
+export function InfoRow({
+  label,
+  value,
+  variant = 'default',
+  density = 'default',
+}: InfoRowProps) {
   const labelClasses =
     variant === 'highlight'
       ? 'text-text-main font-semibold'
@@ -18,10 +24,13 @@ export function InfoRow({ label, value, variant = 'default' }: InfoRowProps) {
   const valueClasses =
     variant === 'highlight' ? 'text-brand-blue font-bold' : 'text-text-main font-semibold';
 
+  const rowPadding = density === 'compact' ? 'py-1.5' : 'py-3';
+  const textSize = density === 'compact' ? 'text-xs' : 'text-sm';
+
   return (
-    <div className="flex justify-between items-center py-3 border-b border-border-subtle last:border-b-0">
-      <span className={`text-sm ${labelClasses}`}>{label}</span>
-      <span className={`text-sm ${valueClasses}`}>{value}</span>
+    <div className={`flex justify-between items-center ${rowPadding} border-b border-border-subtle last:border-b-0`}>
+      <span className={`${textSize} ${labelClasses}`}>{label}</span>
+      <span className={`${textSize} ${valueClasses}`}>{value}</span>
     </div>
   );
 }
