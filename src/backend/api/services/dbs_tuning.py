@@ -1,6 +1,7 @@
 from typing import List
 from ..schemas.dbs_tuning import ChannelRecommendation, DbsTuningRecommendation
-
+from src.backend.dbs_agent.agent import interpret_dbs_parameters
+from services.dbs_state import get_dbs_state_for_patient
 
 def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
     """
@@ -43,12 +44,16 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
         ),
     ]
     
-    explanations = [
-        "During the last 30 days, the patient has reported fluctuations in mood while tremor activity shows an upward trend.",
-        "Based on historical tuning records, a moderate increase in amplitude on channels 1 and 3 has shown potential to reduce tremor severity without compromising emotional stability.",
-        "The recommended frequency adjustment on channel 3 may help optimize motor control during peak symptom periods.",
-        "Increasing time-on hours across channels could improve overall symptom management throughout the day.",
-    ]
+    try:
+        proposed_programming = get_dbs_tuning_recommendation(patient_id)
+        current_programming = get_dbs_state_for_patient(patient_id)
+        patient_deltas = {
+            "tremor_reduction": "+30%",
+            "new_symptoms": ["Patient reports increased tingling in the right arm.", "Patient reports sleeping difficulties."]
+        }
+        explanations = interpret_dbs_parameters(proposed_programming, current_programming, patient_deltas)
+    except Exception:
+        explanations = ["Model failed to generate explanations."]
     
     return DbsTuningRecommendation(
         patient_id=patient_id,

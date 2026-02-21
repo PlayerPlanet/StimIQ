@@ -5,8 +5,9 @@
 *.egg-info
 *.csv
 *PADS
-src/backend/dbs-agent/agent.env
+src/backend/dbs_agent/agent.env
 src/backend/uv.lock
 *.env
 *.pyc
 *.pyo
+src/backend/dbs_agent/faiss_index
