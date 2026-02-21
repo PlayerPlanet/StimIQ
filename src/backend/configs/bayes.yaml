@@ -7,6 +7,9 @@ severity_col: "severity"
 param_columns: null
 n_candidates: 5000
 random_state: 0
+batch_size: 3
+exploration_weight: 0.2
+min_distance_frac: 0.05
 # fraction to expand observed parameter ranges when sampling candidates
 bounds_expansion: 0.1
 # minimum samples required to fit GP; below this the last row is returned

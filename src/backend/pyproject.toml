@@ -14,6 +14,7 @@ dependencies = [
     "numpy>=2.4.2",
     "torch>=2.10.0",
     "sim",
+    "scikit-learn>=1.8.0",
 ]
 
 [tool.uv.sources]

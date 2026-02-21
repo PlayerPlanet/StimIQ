@@ -17,6 +17,9 @@ from __future__ import annotations
 
 from typing import Sequence, Dict, Any, Optional
 from pathlib import Path
+from io import BytesIO
+from numbers import Integral
+import warnings
 import numpy as np
 import pandas as pd
 import re
@@ -25,6 +28,7 @@ try:
 	from sklearn.gaussian_process import GaussianProcessRegressor
 	from sklearn.gaussian_process.kernels import Matern, WhiteKernel, ConstantKernel
 	from sklearn.preprocessing import StandardScaler
+	from sklearn.exceptions import ConvergenceWarning
 except Exception as e:
 	raise ImportError(
 		"Bayes.py requires scikit-learn. Install it with `pip install scikit-learn`."
@@ -43,6 +47,10 @@ try:
 	from database import get_supabase
 except Exception:
 	get_supabase = None  # type: ignore
+try:
+	from config import get_settings
+except Exception:
+	get_settings = None  # type: ignore
 
 
 def _detect_param_columns(df: pd.DataFrame) -> Sequence[str]:
@@ -101,6 +109,9 @@ def model(
 	param_columns: Optional[Sequence[str]] = None,
 	n_candidates: int = 5000,
 	random_state: int = 0,
+	batch_size: int = 1,
+	exploration_weight: float = 0.2,
+	min_distance_frac: float = 0.05,
 	cfg: Optional[Any] = None,
 ) -> Dict[str, Any]:
 	"""Fetch last `n` datapoints and propose next parameters.
@@ -122,12 +133,15 @@ def model(
 		param_columns = c.get("param_columns", param_columns)
 		n_candidates = int(c.get("n_candidates", n_candidates))
 		random_state = int(c.get("random_state", random_state))
+		batch_size = int(c.get("batch_size", batch_size))
+		exploration_weight = float(c.get("exploration_weight", exploration_weight))
+		min_distance_frac = float(c.get("min_distance_frac", min_distance_frac))
 		bounds_expansion = float(c.get("bounds_expansion", bounds_expansion))
 		fallback_min_samples = int(c.get("fallback_min_samples", fallback_min_samples))
 		cfg_bounds = c.get("bounds", None)
 
 	# determine data source: prefer explicit data_path param, else config csv_path,
-	# else attempt Supabase if available
+	# else attempt Supabase Storage (patient csv), then optional table fallback
 	df = None
 	if data_path is None:
 		if csv_path is not None:
@@ -137,16 +151,39 @@ def model(
 			if get_supabase is None:
 				raise ValueError("No data path provided and Supabase client not available. Provide `data_path` or set `csv_path` in config.")
 			supabase = get_supabase()
-			try:
-				# request recent rows from 'stimuli' table
-				resp = supabase.table("stimuli").select("*").order("created_at", desc=True).limit(n).execute()
-				data = resp.data
-				if not data:
-					raise ValueError("No records returned from Supabase 'stimuli' table")
-				# supabase returns rows in descending order; take as-is and reset index later
-				df = pd.DataFrame(data)
-			except Exception as e:
-				raise RuntimeError(f"Failed to fetch stimuli from Supabase: {e}")
+			settings = None
+			if get_settings is not None:
+				settings = get_settings()
+
+			# Preferred source: datapoints CSV in Supabase Storage
+			if settings is not None and settings.bayes_patient_id:
+				bucket = settings.supabase_datapoints_bucket
+				object_path = settings.bayes_datapoints_object_path or f"{settings.bayes_patient_id}.csv"
+				try:
+					content = supabase.storage.from_(bucket).download(object_path)
+					if isinstance(content, str):
+						content = content.encode("utf-8")
+					df = pd.read_csv(BytesIO(content))
+					# Storage CSV may be a single semicolon-delimited row with no header.
+					if df.empty:
+						df = pd.read_csv(BytesIO(content), sep=";", header=None)
+				except Exception as e:
+					raise RuntimeError(
+						f"Failed to fetch CSV '{object_path}' from bucket '{bucket}': {e}"
+					)
+			else:
+				# Fallback source: rows from configured stimuli table
+				stimuli_table = "stimuli"
+				if settings is not None:
+					stimuli_table = settings.supabase_stimuli_table
+				try:
+					resp = supabase.table(stimuli_table).select("*").order("created_at", desc=True).limit(n).execute()
+					data = resp.data
+					if not data:
+						raise ValueError(f"No records returned from Supabase table '{stimuli_table}'")
+					df = pd.DataFrame(data)
+				except Exception as e:
+					raise RuntimeError(f"Failed to fetch stimuli from Supabase: {e}")
 
 	if df is None:
 		data_path = Path(data_path)
@@ -154,16 +191,40 @@ def model(
 			raise FileNotFoundError(f"CSV data file not found: {data_path}")
 		df = pd.read_csv(data_path)
 	if df.empty:
-		raise ValueError("`stimuli` table is empty")
+		raise ValueError("Configured stimuli source is empty")
 	df = df.tail(n).reset_index(drop=True)
+
+	# Support headerless per-electrode parameter CSVs (e.g. 16 params or 16 params + severity).
+	if param_columns is None and all(isinstance(c, Integral) for c in df.columns):
+		has_severity_tail = (df.shape[1] % 4 == 1)
+		n_param_cols = df.shape[1] - 1 if has_severity_tail else df.shape[1]
+		if n_param_cols % 4 == 0:
+			canonical = ["amp", "freq_hz", "pulse_width_s", "phase_rad"]
+			n_electrodes = n_param_cols // 4
+			renamed: dict[int, str] = {}
+			inferred_cols: list[str] = []
+			k = 0
+			for i in range(n_electrodes):
+				for base in canonical:
+					name = f"{base}_{i}"
+					renamed[k] = name
+					inferred_cols.append(name)
+					k += 1
+			if has_severity_tail:
+				renamed[n_param_cols] = severity_col
+			df = df.rename(columns=renamed)
+			param_columns = inferred_cols
 
 	# detect parameter columns if not provided
 	if param_columns is None:
 		param_columns = _detect_param_columns(df)
 	if not param_columns:
-		raise ValueError("No parameter columns found in `stimuli` table")
+		raise ValueError("No parameter columns found in configured stimuli source")
 	if severity_col not in df.columns:
-		raise ValueError(f"Severity column '{severity_col}' not found in table")
+		# When the CSV has only stimulation parameters (no loss/severity yet),
+		# return the latest parameters as a safe fallback.
+		last = df[list(param_columns)].iloc[-1].to_dict()
+		return {"next_params": last, "model": None, "bounds": None}
 
 	# build feature matrix for possibly generated/missing per-electrode columns
 	cols = list(param_columns)
@@ -174,6 +235,15 @@ def model(
 
 	X = df[cols].to_numpy(dtype=float)
 	y = df[severity_col].to_numpy(dtype=float)
+
+	# collapse duplicate parameter rows by averaging severity to reduce
+	# pathological GP fits on repeated identical X values.
+	if X.shape[0] > 1:
+		xy = pd.DataFrame(X, columns=cols)
+		xy[severity_col] = y
+		agg = xy.groupby(cols, dropna=False, as_index=False)[severity_col].mean()
+		X = agg[cols].to_numpy(dtype=float)
+		y = agg[severity_col].to_numpy(dtype=float)
 
 	# handle tiny datasets
 	if len(y) < fallback_min_samples:
@@ -199,10 +269,37 @@ def model(
 	ys = (y - y_mean) / y_std
 
 	# Gaussian Process
-	kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(length_scale=np.ones(Xs.shape[1]), nu=2.5)
-	kernel += WhiteKernel(noise_level=1e-6, noise_level_bounds=(1e-10, 1e1))
-	gp = GaussianProcessRegressor(kernel=kernel, normalize_y=True, random_state=random_state)
-	gp.fit(Xs, ys)
+	# Keep ARD bounds tighter on standardized inputs to reduce runaway
+	# length-scales when the response is weakly informative.
+	kernel = ConstantKernel(1.0, (1e-2, 1e2)) * Matern(
+		length_scale=np.ones(Xs.shape[1]),
+		length_scale_bounds=(1e-2, 1e2),
+		nu=2.5,
+	)
+	kernel += WhiteKernel(noise_level=1e-3, noise_level_bounds=(1e-6, 1.0))
+	gp = GaussianProcessRegressor(
+		kernel=kernel,
+		normalize_y=False,  # ys is already standardized
+		random_state=random_state,
+		n_restarts_optimizer=1,
+		alpha=1e-6,
+	)
+	with warnings.catch_warnings(record=True) as caught:
+		warnings.simplefilter("always", ConvergenceWarning)
+		gp.fit(Xs, ys)
+		has_gp_warning = any(issubclass(w.category, ConvergenceWarning) for w in caught)
+	if has_gp_warning:
+		# Fallback to fixed hyperparameters (no optimizer) for stability.
+		fixed_kernel = ConstantKernel(1.0) * Matern(length_scale=np.ones(Xs.shape[1]), nu=2.5)
+		fixed_kernel += WhiteKernel(noise_level=1e-2)
+		gp = GaussianProcessRegressor(
+			kernel=fixed_kernel,
+			optimizer=None,
+			normalize_y=False,
+			random_state=random_state,
+			alpha=1e-6,
+		)
+		gp.fit(Xs, ys)
 
 	# inference: propose candidates by random sampling inside inferred bounds
 	param_mins = np.min(X, axis=0)
@@ -211,6 +308,12 @@ def model(
 	ranges = param_maxs - param_mins
 	param_low = np.empty_like(param_mins)
 	param_high = np.empty_like(param_maxs)
+	min_span_by_base = {
+		"amp": 0.2,
+		"freq_hz": 10.0,
+		"pulse_width_s": 0.5,
+		"phase_rad": 0.5,
+	}
 	for j, name in enumerate(cols):
 		base = name.rsplit("_", 1)[0]
 		if cfg is not None and OmegaConf is not None and cfg_bounds is not None and base in cfg_bounds:
@@ -218,8 +321,16 @@ def model(
 			param_low[j] = float(b[0])
 			param_high[j] = float(b[1])
 		else:
-			param_low[j] = param_mins[j] - bounds_expansion * ranges[j]
-			param_high[j] = param_maxs[j] + bounds_expansion * ranges[j]
+			if ranges[j] <= 0.0:
+				span = min_span_by_base.get(base, 1.0)
+				center = float(param_mins[j])
+				param_low[j] = center - span
+				param_high[j] = center + span
+			else:
+				param_low[j] = param_mins[j] - bounds_expansion * ranges[j]
+				param_high[j] = param_maxs[j] + bounds_expansion * ranges[j]
+			if base in {"amp", "freq_hz", "pulse_width_s"}:
+				param_low[j] = max(0.0, param_low[j])
 
 	rng = np.random.default_rng(random_state)
 	cand = rng.uniform(param_low, param_high, size=(n_candidates, X.shape[1]))
@@ -233,15 +344,57 @@ def model(
 
 	y_best = np.min(y)  # current best (smaller severity better)
 	ei = _expected_improvement(mu_unscaled, sigma_unscaled, y_best)
+	# Exploration-augmented acquisition.
+	score = ei + exploration_weight * sigma_unscaled
 
-	best_idx = int(np.argmax(ei))
-	best_cand = cand[best_idx]
+	# Diversity filter in normalized parameter space.
+	span = np.where((param_high - param_low) <= 1e-12, 1.0, (param_high - param_low))
+	cand_n = (cand - param_low) / span
+	X_n = (X - param_low) / span
+	order = np.argsort(-score)
+	selected_idx: list[int] = []
+	min_d = max(0.0, float(min_distance_frac))
+	for idx in order:
+		v = cand_n[idx]
+		# keep distance from observed points
+		if X_n.shape[0] > 0:
+			d_obs = np.linalg.norm(X_n - v, axis=1)
+			if np.any(d_obs < min_d):
+				continue
+		# keep distance from already selected points
+		if selected_idx:
+			d_sel = np.linalg.norm(cand_n[selected_idx] - v, axis=1)
+			if np.any(d_sel < min_d):
+				continue
+		selected_idx.append(int(idx))
+		if len(selected_idx) >= max(1, int(batch_size)):
+			break
+	# fallback if diversity threshold was too strict
+	if not selected_idx:
+		selected_idx = [int(order[0])]
+	while len(selected_idx) < max(1, int(batch_size)):
+		for idx in order:
+			if int(idx) not in selected_idx:
+				selected_idx.append(int(idx))
+				break
+		if len(selected_idx) == len(order):
+			break
 
+	best_cand = cand[selected_idx[0]]
 	next_params = {name: float(val) for name, val in zip(param_columns, best_cand)}
+	next_params_batch = [
+		{name: float(val) for name, val in zip(param_columns, cand[i])}
+		for i in selected_idx
+	]
 
 	bounds = {name: (float(low), float(high)) for name, low, high in zip(param_columns, param_low, param_high)}
 
-	return {"next_params": next_params, "model": gp, "bounds": bounds}
+	return {
+		"next_params": next_params,
+		"next_params_batch": next_params_batch,
+		"model": gp,
+		"bounds": bounds,
+	}
 
 
 if hydra is not None:

@@ -107,6 +107,39 @@ def _flatten_windows(x: np.ndarray) -> np.ndarray:
     return x.reshape(x.shape[0], -1)
 
 
+def _xgboost_features(x: np.ndarray, max_fft_bins: int = 96) -> np.ndarray:
+    """Build feature vectors for XGBoost from IMU windows.
+
+    Features:
+    - Per-channel time-domain summary stats: mean, std, rms
+    - Log-magnitude FFT bins per channel (optionally downsampled to max_fft_bins)
+    """
+    if x.ndim != 3:
+        raise ValueError(f"Expected x with shape (N,T,C), got {x.shape}")
+    if x.shape[2] != 9:
+        raise ValueError(f"Expected 9 IMU channels, got {x.shape[2]}")
+
+    # Time-domain summaries (N, 3*C)
+    mean = np.mean(x, axis=1)
+    std = np.std(x, axis=1)
+    rms = np.sqrt(np.mean(np.square(x), axis=1))
+    td = np.concatenate([mean, std, rms], axis=1).astype(np.float32)
+
+    # Frequency-domain summaries (N, F, C) -> (N, F*C)
+    t = x.shape[1]
+    hann = np.hanning(t).astype(np.float32)[None, :, None]
+    xw = x * hann
+    spec = np.fft.rfft(xw, axis=1)
+    mag = np.log1p(np.abs(spec)).astype(np.float32)
+
+    if max_fft_bins > 0 and mag.shape[1] > max_fft_bins:
+        idx = np.linspace(0, mag.shape[1] - 1, num=max_fft_bins, dtype=int)
+        mag = mag[:, idx, :]
+
+    fd = mag.reshape(mag.shape[0], -1)
+    return np.concatenate([td, fd], axis=1).astype(np.float32)
+
+
 def train_xgboost_regressor(
     x_train: np.ndarray,
     y_train: np.ndarray,
@@ -131,16 +164,16 @@ def train_xgboost_regressor(
         random_state=seed,
     )
     model.fit(
-        _flatten_windows(x_train),
+        _xgboost_features(x_train),
         y_train,
-        eval_set=[(_flatten_windows(x_val), y_val)],
+        eval_set=[(_xgboost_features(x_val), y_val)],
         verbose=False,
     )
     return model
 
 
 def eval_xgboost(model: Any, x: np.ndarray, y: np.ndarray) -> dict[str, float]:
-    pred = np.asarray(model.predict(_flatten_windows(x)), dtype=np.float32)
+    pred = np.asarray(model.predict(_xgboost_features(x)), dtype=np.float32)
     pred = np.tanh(pred)
     return _metrics(y, pred)
 
