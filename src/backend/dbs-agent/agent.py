@@ -29,24 +29,47 @@ llm = ChatGoogleGenerativeAI(
 
 # NEW: Setup the Vector Database
 def setup_vector_db():
-    pdf_path = "dbs_guidelines.pdf"
+    pdf_path = os.getenv("PDF_PATH", "dbs_guidelines.pdf")
+    index_path = os.getenv("FAISS_INDEX_PATH", "faiss_index") # The folder where FAISS will save its data
     
-    if not os.path.exists(pdf_path):
-        print(f"⚠️ Warning: '{pdf_path}' not found. Please place a PDF in the directory to use RAG.")
-        return None
-
-    # Load and split the PDF
-    loader = PyPDFLoader(pdf_path)
-    docs = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    splits = text_splitter.split_documents(docs)
-    
-    # Generate embeddings and store in FAISS using the latest Gemini embedding model
+    # Initialize the embedding model first (needed for both loading and creating)
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004", 
-        api_key=api_key # type: ignore
+        model="models/gemini-embedding-001", 
+        google_api_key=api_key
     )
-    vectorstore = FAISS.from_documents(splits, embeddings)
+
+    # 1. Check if we already have a saved index on the hard drive
+    if os.path.exists(index_path):
+        print(f"Loading existing FAISS index from '{index_path}'...")
+        
+        # Note: LangChain requires allow_dangerous_deserialization=True 
+        # when loading local pickle files for security reasons.
+        vectorstore = FAISS.load_local(
+            index_path, 
+            embeddings, 
+            allow_dangerous_deserialization=True 
+        )
+        
+    # 2. If no saved index exists, create a new one from the PDF
+    else:
+        print(f"No local index found. Parsing '{pdf_path}' and creating new FAISS index...")
+        if not os.path.exists(pdf_path):
+            print(f"⚠️ Warning: '{pdf_path}' not found. Please place a PDF in the directory to use RAG.")
+            return None
+
+        # Load and split the PDF
+        loader = PyPDFLoader(pdf_path)
+        docs = loader.load()
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        splits = text_splitter.split_documents(docs)
+        
+        # Generate embeddings and store in FAISS
+        vectorstore = FAISS.from_documents(splits, embeddings)
+        
+        # Save it locally for next time!
+        vectorstore.save_local(index_path)
+        print(f"Successfully saved new FAISS index to the '{index_path}' folder.")
+        
     return vectorstore.as_retriever(search_kwargs={"k": 2})
 
 # Initialize the retriever globally
@@ -93,11 +116,11 @@ agent = create_react_agent(llm, tools=tools)
 # 6. Simulate the Hand-off from your Bayesian Model
 mock_bayesian_state = {
   "current_programming": {"frequency": 130, "voltage": 2.5, "pulse_width": 60},
-  "proposed_programming": {"frequency": 130, "voltage": 3.0, "pulse_width": 60},
-  "bayesian_rationale": "High expected improvement in tremor; low uncertainty in 3.0V region.",
+  "proposed_programming": {"frequency": 140, "voltage": 2.7, "pulse_width": 50},
+  "bayesian_rationale": "High expected improvement in tremor; low uncertainty in 2.5V region.",
   "patient_deltas": {
-    "tremor_reduction": "+15%",
-    "new_symptoms": ["Patient reports mild tingling in the right arm."]
+    "tremor_reduction": "+30%",
+    "new_symptoms": ["Patient reports increased tingling in the right arm." ,"Patient reports sleeping difficulties."]
   }
 }
 
@@ -130,6 +153,19 @@ for chunk in agent.stream({
     ]
 }):
     if "agent" in chunk:
-        print(chunk["agent"]["messages"][0].content)
+        message = chunk["agent"]["messages"][0]
+        # Extract just the text content if it's a structured message
+        if hasattr(message, "content"):
+            content = message.content
+            if isinstance(content, list):
+                # Extract text from structured content
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        print(item.get("text", ""))
+            elif isinstance(content, str):
+                print(content)
+        else:
+            print(message)
     elif "tools" in chunk:
-        print(f"[Agent is using tool: {chunk['tools']['messages'][0].name}]")
+        tool_message = chunk['tools']['messages'][0]
+        print(f"\n[🔧 Using tool: {tool_message.name}]")
