@@ -3,4 +3,6 @@
 *.python-version
 *uv.lock
 *.egg-info
-*.csvsrc/backend/dbs-agent/agent.env
+*.csv
+src/backend/dbs-agent/agent.env
+src/backend/dbs-agent/faiss_index
