@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import Sequence, Dict, Any, Optional
 from pathlib import Path
+import os
 import numpy as np
 import pandas as pd
 import re
@@ -27,7 +28,7 @@ try:
 	from sklearn.preprocessing import StandardScaler
 except Exception as e:
 	raise ImportError(
-		"Bayes.py requires scikit-learn. Install it with `pip install scikit-learn`."
+		"bayes.py requires scikit-learn. Install it with `pip install scikit-learn`."
 	) from e
 try:
 	from omegaconf import DictConfig, OmegaConf
@@ -43,6 +44,12 @@ try:
 	from database import get_supabase
 except Exception:
 	get_supabase = None  # type: ignore
+
+# optional import for local loss calculation
+try:
+    from loss.loss import calculate_loss
+except Exception:
+    calculate_loss = None  # type: ignore
 
 
 def _detect_param_columns(df: pd.DataFrame) -> Sequence[str]:
@@ -102,6 +109,7 @@ def model(
 	n_candidates: int = 5000,
 	random_state: int = 0,
 	cfg: Optional[Any] = None,
+	patient_id: Optional[str] = None,
 ) -> Dict[str, Any]:
 	"""Fetch last `n` datapoints and propose next parameters.
 
@@ -114,20 +122,42 @@ def model(
 	csv_path = None
 	bounds_expansion = 0.1
 	fallback_min_samples = 3
+	storage_bucket = "datapoints"
 	if cfg is not None and OmegaConf is not None:
 		c = OmegaConf.to_container(cfg, resolve=True)
 		csv_path = c.get("csv_path", None)
 		n = int(c.get("n", n))
 		severity_col = c.get("severity_col", severity_col)
 		param_columns = c.get("param_columns", param_columns)
+		# allow patient_id in config (e.g., configs/bayes.yaml)
+		patient_id = c.get("patient_id", patient_id)
 		n_candidates = int(c.get("n_candidates", n_candidates))
 		random_state = int(c.get("random_state", random_state))
 		bounds_expansion = float(c.get("bounds_expansion", bounds_expansion))
 		fallback_min_samples = int(c.get("fallback_min_samples", fallback_min_samples))
 		cfg_bounds = c.get("bounds", None)
+		storage_bucket = c.get("storage_bucket", storage_bucket)
+
+# If Supabase is available, prefer the bucket name from runtime settings
+if get_supabase is not None:
+	try:
+		from backend.config import get_settings
+
+		storage_bucket = get_settings().supabase_datapoints_bucket
+	except Exception:
+		# keep existing value if settings not available
+		pass
 
 	# determine data source: prefer explicit data_path param, else config csv_path,
 	# else attempt Supabase if available
+	# Allow overriding via environment variables: CSV_PATH (local file) or PATIENT_ID (Supabase storage)
+	if data_path is None:
+		env_csv = os.getenv("CSV_PATH")
+		env_patient = os.getenv("PATIENT_ID")
+		if env_csv:
+			data_path = env_csv
+		if env_patient and not patient_id:
+			patient_id = env_patient
 	df = None
 	if data_path is None:
 		if csv_path is not None:
@@ -138,13 +168,38 @@ def model(
 				raise ValueError("No data path provided and Supabase client not available. Provide `data_path` or set `csv_path` in config.")
 			supabase = get_supabase()
 			try:
-				# request recent rows from 'stimuli' table
-				resp = supabase.table("stimuli").select("*").order("created_at", desc=True).limit(n).execute()
-				data = resp.data
-				if not data:
-					raise ValueError("No records returned from Supabase 'stimuli' table")
-				# supabase returns rows in descending order; take as-is and reset index later
-				df = pd.DataFrame(data)
+				# if patient_id provided, try fetching patient-specific CSV from storage
+				if patient_id is not None:
+					from io import BytesIO, StringIO
+					key = f"{patient_id}.csv"
+					try:
+						res = supabase.storage.from_(storage_bucket).download(key)
+					except Exception as e:
+						# surface helpful error when storage download fails
+						raise RuntimeError(f"Failed to download patient CSV '{key}' from Supabase storage bucket '{storage_bucket}': {e}")
+
+					# handle common response types: bytes, file-like, or dict with data
+					if isinstance(res, (bytes, bytearray)):
+						df = pd.read_csv(BytesIO(res))
+					elif hasattr(res, "read"):
+						df = pd.read_csv(res)
+					elif isinstance(res, dict) and "data" in res:
+						data_bytes = res["data"]
+						if isinstance(data_bytes, (bytes, bytearray)):
+							df = pd.read_csv(BytesIO(data_bytes))
+						else:
+							df = pd.read_csv(StringIO(str(data_bytes)))
+					else:
+						# fallback: try to coerce to text
+						df = pd.read_csv(StringIO(str(res)))
+				else:
+					# request recent rows from 'stimuli' table
+					resp = supabase.table("stimuli").select("*").order("created_at", desc=True).limit(n).execute()
+					data = resp.data
+					if not data:
+						raise ValueError("No records returned from Supabase 'stimuli' table")
+					# supabase returns rows in descending order; take as-is and reset index later
+					df = pd.DataFrame(data)
 			except Exception as e:
 				raise RuntimeError(f"Failed to fetch stimuli from Supabase: {e}")
 
@@ -160,10 +215,27 @@ def model(
 	# detect parameter columns if not provided
 	if param_columns is None:
 		param_columns = _detect_param_columns(df)
+		# fallback: if detection failed, use all columns as parameters when no severity present
+		if not param_columns:
+			if severity_col not in df.columns:
+				cols_candidate = list(df.columns)
+			else:
+				cols_candidate = [c for c in df.columns if c != severity_col]
+			if len(cols_candidate) % 4 == 0 and len(cols_candidate) > 0:
+				param_columns = cols_candidate
+			else:
+				raise ValueError("No parameter columns found in `stimuli` table and CSV columns are not a multiple of 4")
 	if not param_columns:
 		raise ValueError("No parameter columns found in `stimuli` table")
-	if severity_col not in df.columns:
-		raise ValueError(f"Severity column '{severity_col}' not found in table")
+
+	# tiny dataset fallback before heavy processing
+	if len(df) < fallback_min_samples:
+		last = df[list(param_columns)].iloc[-1].to_dict()
+		return {"next_params": last, "model": None, "bounds": None}
+
+	# allow computing severity via local loss function when column missing
+	if severity_col not in df.columns and calculate_loss is None:
+		raise ValueError(f"Severity column '{severity_col}' not found and local loss unavailable")
 
 	# build feature matrix for possibly generated/missing per-electrode columns
 	cols = list(param_columns)
@@ -173,13 +245,6 @@ def model(
 			df[c] = pd.NA
 
 	X = df[cols].to_numpy(dtype=float)
-	y = df[severity_col].to_numpy(dtype=float)
-
-	# handle tiny datasets
-	if len(y) < fallback_min_samples:
-		# fallback: return mean of observed parameters (or last row)
-		last = df[list(param_columns)].iloc[-1].to_dict()
-		return {"next_params": last, "model": None, "bounds": None}
 
 	# impute missing feature values (column-wise mean) before scaling
 	X = np.array(X, dtype=float)
@@ -189,6 +254,22 @@ def model(
 	inds = np.where(np.isnan(X))
 	if inds[0].size > 0:
 		X[inds] = np.take(col_means, inds[1])
+
+	# compute target losses: prefer explicit severity column, else use calculate_loss
+	if severity_col in df.columns:
+		y = df[severity_col].to_numpy(dtype=float)
+	else:
+		if calculate_loss is None:
+			raise ValueError("No severity column and local loss function unavailable")
+		y_list = []
+		for row in X:
+			if row.size % 4 != 0:
+				raise ValueError(f"Expected row length multiple of 4, got {row.size}")
+			n_elec = row.size // 4
+			param_matrix = row.reshape(n_elec, 4).T
+			loss_val = calculate_loss(param_matrix)
+			y_list.append(float(loss_val))
+		y = np.asarray(y_list, dtype=float)
 
 	# standardize inputs and outputs
 	x_scaler = StandardScaler()

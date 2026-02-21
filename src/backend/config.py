@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_service_role_key: str
     supabase_imu_bucket: str = "imu-data"
+    supabase_datapoints_bucket: str = "datapoints"
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     api_reload: bool = True
