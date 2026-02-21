@@ -6,3 +6,6 @@
 *.csv
 src/backend/dbs-agent/agent.env
 src/backend/dbs-agent/faiss_index
+*PADS
+src/backend/uv.lock
+*.env
