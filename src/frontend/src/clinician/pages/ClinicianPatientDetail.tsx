@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ClinicianLayout } from '../../layouts/ClinicianLayout';
 import { LoadingState } from '../../components/common/LoadingState';
 import type { PatientDetail } from '../../lib/types';
+import { IMUUploadModal } from '../components/IMUUploadModal';
 import { PatientDetailView } from '../components/PatientDetailView';
 import { DbsStateSection } from '../components/DbsStateSection';
 import { DbsTuningSection } from '../components/DbsTuningSection';
