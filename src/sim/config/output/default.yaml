@@ -1,0 +1,9 @@
+local_dir: artifacts/sim
+supabase:
+  enabled: false
+  url: ${oc.env:SUPABASE_URL,}
+  key: ${oc.env:SUPABASE_KEY,}
+  bucket: sim-rollouts
+  table: sim_rollouts
+  prefix: rollouts
+  upsert: true

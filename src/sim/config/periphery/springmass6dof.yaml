@@ -1,0 +1,5 @@
+name: springmass_6dof
+freq_hz: 4.5
+damping: 0.7
+gain: 1.0
+mix: [1.0, 0.6, 0.3]

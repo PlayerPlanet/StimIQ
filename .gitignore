@@ -1,1 +1,6 @@
-src/backend/dbs-agent/agent.env
+*.venv
+*__pycache__
+*.python-version
+*uv.lock
+*.egg-info
+*.csvsrc/backend/dbs-agent/agent.env
