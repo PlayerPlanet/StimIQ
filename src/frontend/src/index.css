@@ -17,17 +17,17 @@
   }
 
   a {
-    @apply transition-colors duration-200;
+    @apply transition-colors duration-75;
   }
 
   button {
-    @apply transition-all duration-200 ease-smooth;
+    @apply transition-all duration-75 ease-smooth;
   }
 
   input,
   textarea,
   select {
-    @apply transition-all duration-200;
+    @apply transition-all duration-75;
   }
 }
 

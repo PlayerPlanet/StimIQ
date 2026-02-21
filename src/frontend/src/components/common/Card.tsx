@@ -20,17 +20,17 @@ export function Card({
   onClick,
 }: CardProps) {
   const baseClasses =
-    'rounded-md border transition-all duration-200';
+    'rounded-sm border transition-all duration-75';
 
   const variantClasses =
     variant === 'metric'
-      ? 'bg-brand-blue text-white border-brand-blue shadow-lg'
+      ? 'bg-brand-blue text-white border-brand-blue'
       : variant === 'subtle'
-      ? 'bg-brand-blue-soft border-border-subtle shadow-sm'
-      : 'bg-surface border-border-subtle shadow-sm';
+      ? 'bg-brand-blue-soft border-border-subtle'
+      : 'bg-surface border-border-subtle';
 
   const hoverClasses = hover
-    ? 'hover:shadow-md'
+    ? 'hover:border-brand-blue'
     : '';
 
   return (
