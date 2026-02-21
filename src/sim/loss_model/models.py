@@ -12,19 +12,53 @@ def build_cnn_regressor() -> Any:
     except ImportError as exc:
         raise ImportError("torch missing. Install with: pip install '.[ml]'") from exc
 
+    class _ResidualBlock(nn.Module):
+        def __init__(self, in_ch: int, out_ch: int, dilation: int = 1, dropout: float = 0.1) -> None:
+            super().__init__()
+            padding = dilation
+            self.conv1 = nn.Conv1d(in_ch, out_ch, kernel_size=3, padding=padding, dilation=dilation)
+            self.bn1 = nn.BatchNorm1d(out_ch)
+            self.conv2 = nn.Conv1d(out_ch, out_ch, kernel_size=3, padding=padding, dilation=dilation)
+            self.bn2 = nn.BatchNorm1d(out_ch)
+            self.act = nn.GELU()
+            self.drop = nn.Dropout(dropout)
+            self.skip = nn.Identity() if in_ch == out_ch else nn.Conv1d(in_ch, out_ch, kernel_size=1)
+
+        def forward(self, x: Any) -> Any:
+            residual = self.skip(x)
+            h = self.conv1(x)
+            h = self.bn1(h)
+            h = self.act(h)
+            h = self.drop(h)
+            h = self.conv2(h)
+            h = self.bn2(h)
+            h = self.drop(h)
+            return self.act(h + residual)
+
     class _CNNRegressor(nn.Module):
         def __init__(self) -> None:
             super().__init__()
             self.net = nn.Sequential(
                 nn.Conv1d(9, 32, kernel_size=5, padding=2),
-                nn.ReLU(),
-                nn.Conv1d(32, 64, kernel_size=5, padding=2),
-                nn.ReLU(),
-                nn.Conv1d(64, 64, kernel_size=3, padding=1),
-                nn.ReLU(),
+                nn.BatchNorm1d(32),
+                nn.GELU(),
+                _ResidualBlock(32, 32, dilation=1, dropout=0.10),
+                _ResidualBlock(32, 64, dilation=1, dropout=0.10),
+                _ResidualBlock(64, 64, dilation=2, dropout=0.12),
+                _ResidualBlock(64, 96, dilation=2, dropout=0.15),
+                _ResidualBlock(96, 128, dilation=4, dropout=0.15),
                 nn.AdaptiveAvgPool1d(1),
             )
-            self.head = nn.Sequential(nn.Flatten(), nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 1), nn.Tanh())
+            self.head = nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(128, 64),
+                nn.GELU(),
+                nn.Dropout(0.2),
+                nn.Linear(64, 32),
+                nn.GELU(),
+                nn.Linear(32, 1),
+                nn.Tanh(),
+            )
 
         def forward(self, x: Any) -> Any:
             return self.head(self.net(x))
