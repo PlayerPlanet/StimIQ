@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -11,15 +12,14 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
-# 1. Load environment variables
+# --- 1. Setup & Initialization ---
 load_dotenv("dbs-agent/agent.env")
 
-# Read API key explicitly and fail fast if missing
 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise RuntimeError("GOOGLE_API_KEY or GEMINI_API_KEY must be set in agent.env")
 
-# 2. Initialize the LLM
+# Initialize the LLM
 llm = ChatGoogleGenerativeAI(
     model="models/gemini-2.5-flash",
     temperature=0, 
@@ -27,145 +27,142 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=api_key,
 ) 
 
-# NEW: Setup the Vector Database
+# --- 2. Vector Database Setup ---
 def setup_vector_db():
     pdf_path = os.getenv("PDF_PATH", "dbs_guidelines.pdf")
-    index_path = os.getenv("FAISS_INDEX_PATH", "faiss_index") # The folder where FAISS will save its data
+    index_path = os.getenv("FAISS_INDEX_PATH", "faiss_index") 
     
-    # Initialize the embedding model first (needed for both loading and creating)
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-001", 
-        google_api_key=api_key
+        model="models/gemini-embedding-001", # Note: models/text-embedding-004 is recommended for newer deployments
+        google_api_key=api_key # type: ignore
     )
 
-    # 1. Check if we already have a saved index on the hard drive
     if os.path.exists(index_path):
-        print(f"Loading existing FAISS index from '{index_path}'...")
-        
-        # Note: LangChain requires allow_dangerous_deserialization=True 
-        # when loading local pickle files for security reasons.
-        vectorstore = FAISS.load_local(
-            index_path, 
-            embeddings, 
-            allow_dangerous_deserialization=True 
-        )
-        
-    # 2. If no saved index exists, create a new one from the PDF
+        return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True).as_retriever(search_kwargs={"k": 2})
     else:
-        print(f"No local index found. Parsing '{pdf_path}' and creating new FAISS index...")
+        print(f"No local index found. Parsing '{pdf_path}'...")
         if not os.path.exists(pdf_path):
-            print(f"⚠️ Warning: '{pdf_path}' not found. Please place a PDF in the directory to use RAG.")
+            print(f"⚠️ Warning: '{pdf_path}' not found. Vector DB disabled.")
             return None
-
-        # Load and split the PDF
         loader = PyPDFLoader(pdf_path)
-        docs = loader.load()
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        splits = text_splitter.split_documents(docs)
-        
-        # Generate embeddings and store in FAISS
+        splits = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(loader.load())
         vectorstore = FAISS.from_documents(splits, embeddings)
-        
-        # Save it locally for next time!
         vectorstore.save_local(index_path)
-        print(f"Successfully saved new FAISS index to the '{index_path}' folder.")
-        
-    return vectorstore.as_retriever(search_kwargs={"k": 2})
+        return vectorstore.as_retriever(search_kwargs={"k": 2})
 
-# Initialize the retriever globally
 retriever = setup_vector_db()
 
-# 3. Define your Tools
+# --- 3. Tool Definition ---
 def search_medical_guidelines_impl(symptom: str) -> str:
     """Use this helper to search the official DBS medical guidelines PDF for side effects or programming advice."""
     if not retriever:
         return f"System note: Could not search for '{symptom}' because no PDF vector database was initialized."
         
-    print(f"\n[Searching Vector DB for: {symptom}]")
     retrieved_docs = retriever.invoke(symptom)
     formatted_context = "\n\n".join([doc.page_content for doc in retrieved_docs])
     
     if not formatted_context.strip():
         return "No relevant information found in the guidelines for this query."
-        
-    return f"Here is the relevant information extracted from the medical guidelines:\n{formatted_context}"
+    return f"Extracted from guidelines:\n{formatted_context}"
 
-# Wrap the helper as a langchain tool for agent use
 search_medical_guidelines = tool(search_medical_guidelines_impl)
-tools = [search_medical_guidelines]
 
-# 4. Define the IMPROVED System Prompt
-system_prompt = """You are an expert clinical interpreter for a Bayesian DBS optimization model. 
-Your objective is to translate the mathematical state of the model into clear, clinical insights for a neurologist.
+# --- 4. The Callable Agent Function ---
+def interpret_dbs_parameters(current_programming: dict, proposed_programming: dict, patient_deltas: dict) -> dict:
+    """
+    Takes the state of the Bayesian Optimizer and patient changes, 
+    runs the LangGraph agent, and returns a dictionary containing both 
+    the raw output (with scratchpad) and the clean clinical UI output.
+    """
+    
+    system_prompt = """You are a highly specialized clinical AI assistant for Deep Brain Stimulation (DBS) programming. 
+    Your sole objective is to interpret the mathematical state of a Bayesian Optimization (BO) model and translate it into safe, actionable insights for a neurologist.
 
-You MUST strictly structure your response using EXACTLY these three markdown headers. Do not add conversational filler before or after.
+    # CORE CONSTRAINTS & GUARDRAILS
+    1. DO NOT make medical diagnoses.
+    2. DO NOT suggest parameter combinations that contradict the retrieved medical guidelines.
+    3. IF the `search_medical_guidelines_impl` tool yields no results for a symptom, you MUST state: "No specific clinical guidelines were found in the database for this symptom." DO NOT use your general pre-trained knowledge to guess the anatomical cause.
+    4. ALWAYS prioritize patient safety over mathematical optimization.
 
-### 1. Mathematical Rationale
-Explain why the Bayesian model chose these parameters based on its acquisition function (e.g., exploring high uncertainty vs. exploiting high expected utility).
+    # REASONING PROCESS
+    Before generating your final output, you must think through the problem in a <scratchpad> block. 
+    Analyze the parameter shifts, identify the BO's goal (exploration vs. exploitation), check the patient deltas, and plan your tool queries. 
 
-### 2. Patient Changes
-Summarize the objective sensor data and subjective patient satisfaction changes since the last calibration. Highlight any stark contrasts.
+    # REQUIRED OUTPUT FORMAT
+    You MUST strictly output your response using the following markdown structure. Do not include conversational filler.
 
-### 3. Clinical Considerations
-You MUST use the `search_medical_guidelines_impl` tool to look up any newly reported symptoms. 
-Synthesize the tool's output with the parameter changes to provide actionable clinical advice (e.g., anatomical structures that might be affected)."""
+    <scratchpad>
+    [Your internal logical reasoning and tool planning goes here. This will be hidden from the final user interface.]
+    </scratchpad>
 
-# 5. Build the Agent using LangGraph
-agent = create_react_agent(llm, tools=tools)
+    ### 1. Mathematical & Physiological Rationale
+    [Explain the BO's parameter changes. Is it exploring a high-uncertainty region or exploiting a known good region? What is the intended physiological effect?]
 
-# 6. Simulate the Hand-off from your Bayesian Model
-mock_bayesian_state = {
-  "current_programming": {"frequency": 130, "voltage": 2.5, "pulse_width": 60},
-  "proposed_programming": {"frequency": 140, "voltage": 2.7, "pulse_width": 50},
-  "bayesian_rationale": "High expected improvement in tremor; low uncertainty in 2.5V region.",
-  "patient_deltas": {
-    "tremor_reduction": "+30%",
-    "new_symptoms": ["Patient reports increased tingling in the right arm." ,"Patient reports sleeping difficulties."]
-  }
-}
+    ### 2. Clinical Considerations
+    [Synthesize the patient's symptom deltas with the output of the `search_medical_guidelines_impl` tool. Warn the clinician of any anatomical risks.]
 
-# 7. Run the Agent
-print("Thinking...\n" + "-"*40)
-user_input = f"Here is the latest output from the Bayesian optimizer: {json.dumps(mock_bayesian_state)}. Please interpret this."
+    ### 3. Grounding Confidence Score
+    [Score: 0%, 50%, or 100%. Explain in one sentence how well the retrieved guidelines map to the patient's specific symptom and the proposed parameters.]
+    """
 
-# Allow an offline mock interpreter for local testing
-if os.getenv("USE_MOCK_LLM") == "1":
-    print("Running offline mock interpreter (USE_MOCK_LLM=1)")
-    print("\nMathematical Rationale\n" + "-"*20)
-    print(mock_bayesian_state.get("bayesian_rationale", ""))
+    agent = create_react_agent(llm, tools=[search_medical_guidelines])
+    
+    # Construct the state payload
+    state_payload = {
+        "current_programming": current_programming,
+        "proposed_programming": proposed_programming,
+        "patient_deltas": patient_deltas
+    }
+    
+    user_input = f"Evaluate this Bayesian optimizer output: {json.dumps(state_payload)}"
+    final_raw_output = ""
+    
+    # Stream and capture the response while printing live
+    for chunk in agent.stream({"messages": [SystemMessage(content=system_prompt), HumanMessage(content=user_input)]}):
+        if "agent" in chunk:
+            message = chunk["agent"]["messages"][0]
+            text_chunk = ""
+            
+            # Robustly handle Gemini's potential list-based or string-based content
+            if hasattr(message, "content"):
+                if isinstance(message.content, list):
+                    for item in message.content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            text_chunk += item.get("text", "")
+                elif isinstance(message.content, str):
+                    text_chunk += message.content
+            
+            print(f"\n[🤖 Agent Responding...]\n")
+            final_raw_output += text_chunk + "\n"
+            
+        elif "tools" in chunk:
+            tool_message = chunk['tools']['messages'][0]
+            print(f"\n[🔧 Agent triggered tool: '{tool_message.name}']")
 
-    print("\nPatient Changes\n" + "-"*20)
-    for k, v in mock_bayesian_state.get("patient_deltas", {}).items():
-        print(f"{k}: {v}")
+    # --- Post-Processing: Strip the scratchpad for the UI ---
+    # This regex removes the <scratchpad>...</scratchpad> block (including newlines)
+    clean_ui_output = re.sub(r'<scratchpad>.*?</scratchpad>', '', final_raw_output, flags=re.DOTALL).strip()
 
-    print("\nClinical Considerations\n" + "-"*20)
-    for sym in mock_bayesian_state.get("patient_deltas", {}).get("new_symptoms", []):
-        print(f"Symptom: {sym}")
-        print("Tool output:", search_medical_guidelines_impl(sym))
-        print()
-    sys.exit(0)
+    return {
+        "raw_response": final_raw_output,
+        "clean_ui_response": clean_ui_output
+    }
 
-# Stream the response back and include the system prompt as a SystemMessage
-for chunk in agent.stream({
-    "messages": [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_input),
-    ]
-}):
-    if "agent" in chunk:
-        message = chunk["agent"]["messages"][0]
-        # Extract just the text content if it's a structured message
-        if hasattr(message, "content"):
-            content = message.content
-            if isinstance(content, list):
-                # Extract text from structured content
-                for item in content:
-                    if isinstance(item, dict) and item.get("type") == "text":
-                        print(item.get("text", ""))
-            elif isinstance(content, str):
-                print(content)
-        else:
-            print(message)
-    elif "tools" in chunk:
-        tool_message = chunk['tools']['messages'][0]
-        print(f"\n[🔧 Using tool: {tool_message.name}]")
+# --- 5. Execution Example ---
+if __name__ == "__main__":
+    current = {"frequency": 130, "voltage": 2.5, "pulse_width": 60, "phase": 20}
+    proposed = {"frequency": 140, "voltage": 2.7, "pulse_width": 50, "phase": 30}
+    deltas = {
+        "tremor_reduction": "+30%",
+        "new_symptoms": ["Patient reports increased tingling in the right arm.", "Patient reports sleeping difficulties."]
+    }
+
+    print("Interpreting BO State...\n" + "="*50)
+    
+    # Run the function
+    result = interpret_dbs_parameters(current, proposed, deltas)
+    
+    print("\n" + "="*50)
+    print("FINAL OUTPUT FOR DOCTOR'S UI:")
+    print("="*50)
+    print(result["clean_ui_response"])
