@@ -9,6 +9,8 @@ from sim.loss_model.data import load_window_dataset, split_dataset
 from sim.loss_model.models import (
     eval_cnn,
     eval_xgboost,
+    save_cnn,
+    save_xgboost,
     train_cnn_regressor,
     train_xgboost_regressor,
 )
@@ -30,6 +32,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="",
         help="Optional metrics output path. If omitted, results are printed only.",
+    )
+    p.add_argument(
+        "--save-model-dir",
+        type=str,
+        default="",
+        help="Optional directory to save checkpoints for both models and best_model.json.",
     )
     return p.parse_args()
 
@@ -88,6 +96,42 @@ def main() -> None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
         print(f"Saved metrics: {out_path}")
+
+    if args.save_model_dir:
+        save_dir = Path(args.save_model_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        xgb_path = save_dir / "xgboost_model.json"
+        cnn_path = save_dir / "cnn_model.pt"
+        save_xgboost(xgb_model, str(xgb_path))
+        save_cnn(
+            cnn_model,
+            cnn_norm,
+            str(cnn_path),
+            meta={
+                "input_channels": 9,
+                "target": "severity_proxy",
+                "output_activation": "tanh",
+                "loss": "mse",
+            },
+        )
+
+        best_name = "xgboost"
+        if results["cnn"]["val"]["mse"] < results["xgboost"]["val"]["mse"]:
+            best_name = "cnn"
+        best_payload = {
+            "best_model": best_name,
+            "criterion": "lowest_val_mse",
+            "xgboost_path": str(xgb_path),
+            "cnn_path": str(cnn_path),
+            "val_mse": {
+                "xgboost": float(results["xgboost"]["val"]["mse"]),
+                "cnn": float(results["cnn"]["val"]["mse"]),
+            },
+        }
+        best_path = save_dir / "best_model.json"
+        best_path.write_text(json.dumps(best_payload, indent=2), encoding="utf-8")
+        print(f"Saved models: {xgb_path}, {cnn_path}")
+        print(f"Saved best pointer: {best_path} ({best_name})")
 
 
 if __name__ == "__main__":

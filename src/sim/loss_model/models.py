@@ -6,6 +6,32 @@ from typing import Any
 import numpy as np
 
 
+def build_cnn_regressor() -> Any:
+    try:
+        from torch import nn
+    except ImportError as exc:
+        raise ImportError("torch missing. Install with: pip install '.[ml]'") from exc
+
+    class _CNNRegressor(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.net = nn.Sequential(
+                nn.Conv1d(9, 32, kernel_size=5, padding=2),
+                nn.ReLU(),
+                nn.Conv1d(32, 64, kernel_size=5, padding=2),
+                nn.ReLU(),
+                nn.Conv1d(64, 64, kernel_size=3, padding=1),
+                nn.ReLU(),
+                nn.AdaptiveAvgPool1d(1),
+            )
+            self.head = nn.Sequential(nn.Flatten(), nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 1), nn.Tanh())
+
+        def forward(self, x: Any) -> Any:
+            return self.head(self.net(x))
+
+    return _CNNRegressor()
+
+
 def _metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     yt = y_true.astype(np.float64)
     yp = y_pred.astype(np.float64)
@@ -107,24 +133,7 @@ def train_cnn_regressor(
     val_y = torch.from_numpy(y_val.astype(np.float32).reshape(-1, 1))
     loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
-    class CNNRegressor(nn.Module):
-        def __init__(self) -> None:
-            super().__init__()
-            self.net = nn.Sequential(
-                nn.Conv1d(9, 32, kernel_size=5, padding=2),
-                nn.ReLU(),
-                nn.Conv1d(32, 64, kernel_size=5, padding=2),
-                nn.ReLU(),
-                nn.Conv1d(64, 64, kernel_size=3, padding=1),
-                nn.ReLU(),
-                nn.AdaptiveAvgPool1d(1),
-            )
-            self.head = nn.Sequential(nn.Flatten(), nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 1), nn.Tanh())
-
-        def forward(self, x: Any) -> Any:
-            return self.head(self.net(x))
-
-    model = CNNRegressor()
+    model = build_cnn_regressor()
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     try:
@@ -178,3 +187,30 @@ def eval_cnn(model: Any, norm: ChannelNorm, x: np.ndarray, y: np.ndarray) -> dic
     with torch.no_grad():
         pred = model(xt).cpu().numpy().reshape(-1)
     return _metrics(y, pred)
+
+
+def save_xgboost(model: Any, path: str) -> None:
+    from pathlib import Path
+
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    model.save_model(str(out))
+
+
+def save_cnn(model: Any, norm: ChannelNorm, path: str, meta: dict[str, Any] | None = None) -> None:
+    from pathlib import Path
+
+    try:
+        import torch
+    except ImportError as exc:
+        raise ImportError("torch missing. Install with: pip install '.[ml]'") from exc
+
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, Any] = {
+        "model_state_dict": model.state_dict(),
+        "norm_mean": norm.mean,
+        "norm_std": norm.std,
+        "meta": {} if meta is None else meta,
+    }
+    torch.save(payload, out)
