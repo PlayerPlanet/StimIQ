@@ -5,6 +5,8 @@ import { LoadingState } from '../../components/common/LoadingState';
 import type { PatientDetail } from '../../lib/types';
 import { IMUUploadModal } from '../components/IMUUploadModal';
 import { PatientDetailView } from '../components/PatientDetailView';
+import { DbsStateSection } from '../components/DbsStateSection';
+import { DbsTuningSection } from '../components/DbsTuningSection';
 import { getPatientDetail } from '../../lib/apiClient';
 
 /**
@@ -89,6 +91,12 @@ export function ClinicianPatientDetail() {
 
         {/* Patient Detail View */}
         <PatientDetailView patient={patient} />
+
+        {/* DBS State Section */}
+        <DbsStateSection patientId={patient.id} />
+
+        {/* DBS Tuning Section */}
+        <DbsTuningSection patientId={patient.id} />
 
         {showIMUModal && (
           <IMUUploadModal
