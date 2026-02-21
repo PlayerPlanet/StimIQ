@@ -7,6 +7,8 @@ export interface Patient {
   created_at: string;
 }
 
+<<<<<<< HEAD
+=======
 export interface PatientDetail extends Patient {
   // Contact Information
   email?: string | null;
@@ -32,6 +34,7 @@ export interface PatientDetail extends Patient {
   next_appointment?: string | null;
 }
 
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 export interface CreatePatientRequest {
   first_name: string;
   last_name: string;

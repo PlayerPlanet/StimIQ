@@ -1,3 +1,21 @@
+<<<<<<< HEAD
+import { PatientLayout } from '../../layouts/PatientLayout';
+import { Card } from '../../components/common/Card';
+
+/**
+ * PatientDashboard - patient view showing personal overview
+ * Note: No backend endpoint for patient-specific data yet
+ */
+export function PatientDashboard() {
+  return (
+    <PatientLayout>
+      <div className="px-8 py-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-text-main">Your Overview</h1>
+          <p className="text-text-muted text-base mt-2">
+            Your DBS therapy information
+          </p>
+=======
 import { useState } from 'react';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
@@ -16,6 +34,7 @@ export function PatientDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-text-main">Your Overview</h1>
           <p className="text-text-muted text-base mt-2">Your DBS therapy information</p>
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
         </div>
 
         <Card className="p-6">
@@ -35,6 +54,8 @@ export function PatientDashboard() {
             </div>
           </div>
         </Card>
+<<<<<<< HEAD
+=======
 
         <div>
           <h2 className="text-2xl font-bold text-text-main mb-4">Daily Assessment</h2>
@@ -45,6 +66,7 @@ export function PatientDashboard() {
           <h2 className="text-2xl font-bold text-text-main mb-4">Past Assessments</h2>
           <PatientPromHistory patientId={selectedPatientId} />
         </div>
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
       </div>
     </PatientLayout>
   );

@@ -6,13 +6,13 @@ from typing import Any
 import numpy as np
 
 
-def build_cnn_regressor() -> Any:
+def build_cnn_regressor_v1() -> Any:
     try:
         from torch import nn
     except ImportError as exc:
         raise ImportError("torch missing. Install with: pip install '.[ml]'") from exc
 
-    class _CNNRegressor(nn.Module):
+    class _CNNRegressorV1(nn.Module):
         def __init__(self) -> None:
             super().__init__()
             self.net = nn.Sequential(
@@ -25,6 +25,66 @@ def build_cnn_regressor() -> Any:
                 nn.AdaptiveAvgPool1d(1),
             )
             self.head = nn.Sequential(nn.Flatten(), nn.Linear(64, 32), nn.ReLU(), nn.Linear(32, 1), nn.Tanh())
+
+        def forward(self, x: Any) -> Any:
+            return self.head(self.net(x))
+
+    return _CNNRegressorV1()
+
+
+def build_cnn_regressor() -> Any:
+    try:
+        from torch import nn
+    except ImportError as exc:
+        raise ImportError("torch missing. Install with: pip install '.[ml]'") from exc
+
+    class _ResidualBlock(nn.Module):
+        def __init__(self, in_ch: int, out_ch: int, dilation: int = 1, dropout: float = 0.1) -> None:
+            super().__init__()
+            padding = dilation
+            self.conv1 = nn.Conv1d(in_ch, out_ch, kernel_size=3, padding=padding, dilation=dilation)
+            self.bn1 = nn.BatchNorm1d(out_ch)
+            self.conv2 = nn.Conv1d(out_ch, out_ch, kernel_size=3, padding=padding, dilation=dilation)
+            self.bn2 = nn.BatchNorm1d(out_ch)
+            self.act = nn.GELU()
+            self.drop = nn.Dropout(dropout)
+            self.skip = nn.Identity() if in_ch == out_ch else nn.Conv1d(in_ch, out_ch, kernel_size=1)
+
+        def forward(self, x: Any) -> Any:
+            residual = self.skip(x)
+            h = self.conv1(x)
+            h = self.bn1(h)
+            h = self.act(h)
+            h = self.drop(h)
+            h = self.conv2(h)
+            h = self.bn2(h)
+            h = self.drop(h)
+            return self.act(h + residual)
+
+    class _CNNRegressor(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.net = nn.Sequential(
+                nn.Conv1d(9, 32, kernel_size=5, padding=2),
+                nn.BatchNorm1d(32),
+                nn.GELU(),
+                _ResidualBlock(32, 32, dilation=1, dropout=0.10),
+                _ResidualBlock(32, 64, dilation=1, dropout=0.10),
+                _ResidualBlock(64, 64, dilation=2, dropout=0.12),
+                _ResidualBlock(64, 96, dilation=2, dropout=0.15),
+                _ResidualBlock(96, 128, dilation=4, dropout=0.15),
+                nn.AdaptiveAvgPool1d(1),
+            )
+            self.head = nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(128, 64),
+                nn.GELU(),
+                nn.Dropout(0.2),
+                nn.Linear(64, 32),
+                nn.GELU(),
+                nn.Linear(32, 1),
+                nn.Tanh(),
+            )
 
         def forward(self, x: Any) -> Any:
             return self.head(self.net(x))
@@ -125,15 +185,18 @@ def train_cnn_regressor(
     x_train_n = norm.apply(x_train).astype(np.float32)
     x_val_n = norm.apply(x_val).astype(np.float32)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_cuda = device.type == "cuda"
+
     train_ds = TensorDataset(
         torch.from_numpy(np.transpose(x_train_n, (0, 2, 1))),
         torch.from_numpy(y_train.astype(np.float32).reshape(-1, 1)),
     )
-    val_x = torch.from_numpy(np.transpose(x_val_n, (0, 2, 1)))
-    val_y = torch.from_numpy(y_val.astype(np.float32).reshape(-1, 1))
-    loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_x = torch.from_numpy(np.transpose(x_val_n, (0, 2, 1))).to(device)
+    val_y = torch.from_numpy(y_val.astype(np.float32).reshape(-1, 1)).to(device)
+    loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, pin_memory=use_cuda)
 
-    model = build_cnn_regressor()
+    model = build_cnn_regressor().to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     try:
@@ -149,6 +212,8 @@ def train_cnn_regressor(
     for _ in epoch_iter:
         model.train()
         for xb, yb in loader:
+            xb = xb.to(device, non_blocking=use_cuda)
+            yb = yb.to(device, non_blocking=use_cuda)
             optimizer.zero_grad(set_to_none=True)
             pred = model(xb)
             loss = criterion(pred, yb)
@@ -163,7 +228,7 @@ def train_cnn_regressor(
             epoch_iter.set_postfix(val_loss=f"{val_loss:.5f}", best=f"{best_val:.5f}")
         if val_loss < best_val:
             best_val = val_loss
-            best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             no_improve = 0
         else:
             no_improve += 1
@@ -182,7 +247,8 @@ def eval_cnn(model: Any, norm: ChannelNorm, x: np.ndarray, y: np.ndarray) -> dic
         raise ImportError("torch missing. Install with: pip install '.[ml]'") from exc
 
     x_n = norm.apply(x).astype(np.float32)
-    xt = torch.from_numpy(np.transpose(x_n, (0, 2, 1)))
+    device = next(model.parameters()).device
+    xt = torch.from_numpy(np.transpose(x_n, (0, 2, 1))).to(device)
     model.eval()
     with torch.no_grad():
         pred = model(xt).cpu().numpy().reshape(-1)
