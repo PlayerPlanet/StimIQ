@@ -45,15 +45,33 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
     ]
     
     try:
-        proposed_programming = get_dbs_tuning_recommendation(patient_id)
+        # Get current DBS state (returns DbsState schema)
         current_programming = get_dbs_state_for_patient(patient_id)
+        
+        # Build proposed programming from recommended_channels
+        proposed_programming = DbsTuningRecommendation(
+            patient_id=patient_id,
+            recommended_parameters=recommended_channels,
+            explanations=[]
+        )
+        
         patient_deltas = {
             "tremor_reduction": "+30%",
             "new_symptoms": ["Patient reports increased tingling in the right arm.", "Patient reports sleeping difficulties."]
         }
-        explanations = interpret_dbs_parameters(proposed_programming, current_programming, patient_deltas)
-    except Exception:
-        explanations = ["Model failed to generate explanations."]
+        
+        # Convert Pydantic models to dictionaries using model_dump()
+        result = interpret_dbs_parameters(
+            current_programming=current_programming.model_dump(),
+            proposed_programming=proposed_programming.model_dump(),
+            patient_deltas=patient_deltas
+        )
+        
+        # Extract the clean UI response and split into explanation list
+        clean_response = result.get("clean_ui_response", "")
+        explanations = [clean_response] if clean_response else ["Model failed to generate explanations."]
+    except Exception as e:
+        explanations = [f"Model failed to generate explanations: {str(e)}"]
     
     return DbsTuningRecommendation(
         patient_id=patient_id,
