@@ -1,188 +1,68 @@
-/**
- * API Client
- * Currently returns mock data for demo mode.
- * In production, replace with actual FastAPI integration.
- */
+import type { Patient, CreatePatientRequest, IMUUploadResponse } from './types';
 
-import type {
-  PatientSummary,
-  PatientLog,
-  DBSSession,
-  ModelParameters,
-  PatientMetrics,
-  DBSParameterHistory,
-  TremorTimelinePoint,
-} from './mockData';
-import {
-  mockPatient,
-  mockPatients,
-  mockPatientLogs,
-  mockDBSSessions,
-  mockModelParameters,
-  mockPatientOverview,
-  mockPatientMetrics,
-  mockDBSParameterHistory,
-  mockTremorTimeline,
-} from './mockData';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
-const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
-// const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-
-console.log(`API Client initialized. Demo Mode: ${isDemoMode}`);
+console.log(`API Client initialized. Base URL: ${API_BASE_URL}`);
 
 /**
- * Get patient overview/summary
+ * Get all patients
+ * GET /api/patients
  */
-export async function getPatientOverview() {
-  if (isDemoMode) {
-    return Promise.resolve(mockPatientOverview);
+export async function getClinicianPatients(): Promise<Patient[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/patients`);
+    if (response.ok) {
+      return response.json();
+    }
+    throw new Error(`HTTP ${response.status}`);
+  } catch (error) {
+    console.error('Failed to fetch patients:', error);
+    throw error;
   }
-
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients/${patientId}/overview`);
-  // return response.json();
-  
-  return Promise.resolve(mockPatientOverview);
 }
 
 /**
- * Get detailed patient information
+ * Get patient detail by ID
+ * GET /api/patients/{patientId}
  */
-export async function getPatientDetail(patientId?: string): Promise<PatientSummary> {
-  // Demo: look up patient by id
-  if (patientId) {
-    const match = mockPatients.find((patient) => patient.id === patientId);
-    if (match) return Promise.resolve(match);
-  }
-  return Promise.resolve(mockPatient);
+export async function getPatientDetail(patientId: string): Promise<Patient> {
+  const response = await fetch(`${API_BASE_URL}/patients/${patientId}`);
+  if (!response.ok) throw new Error('Patient not found');
+  return response.json();
 }
 
 /**
- * Get all patients (for clinician dashboard)
+ * Create a new patient
+ * POST /api/patients
  */
-export async function getClinicianPatients(): Promise<PatientSummary[]> {
-  if (isDemoMode) {
-    return Promise.resolve(mockPatients);
-  }
-
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients`);
-  // return response.json();
-
-  return Promise.resolve(mockPatients);
+export async function createPatient(data: CreatePatientRequest): Promise<Patient> {
+  const response = await fetch(`${API_BASE_URL}/patients`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to create patient');
+  return response.json();
 }
 
 /**
- * Get patient logs (symptom reports, session notes)
+ * Upload IMU data file for a patient
+ * POST /api/patients/{patientId}/imu-upload
  */
-export async function getPatientLogs(): Promise<PatientLog[]> {
-  if (isDemoMode) {
-    return Promise.resolve(mockPatientLogs);
-  }
+export async function uploadIMU(
+  patientId: string,
+  file: File,
+  date?: string
+): Promise<IMUUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (date) formData.append('date', date);
 
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients/${patientId}/logs`);
-  // return response.json();
-
-  return Promise.resolve(mockPatientLogs);
+  const response = await fetch(`${API_BASE_URL}/patients/${patientId}/imu-upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) throw new Error('Failed to upload IMU file');
+  return response.json();
 }
 
-/**
- * Get DBS session history
- */
-export async function getDBSSessions(): Promise<DBSSession[]> {
-  if (isDemoMode) {
-    return Promise.resolve(mockDBSSessions);
-  }
-
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients/${patientId}/sessions`);
-  // return response.json();
-
-  return Promise.resolve(mockDBSSessions);
-}
-
-/**
- * Get current DBS model parameters
- */
-export async function getModelParameters(): Promise<ModelParameters> {
-  if (isDemoMode) {
-    return Promise.resolve(mockModelParameters);
-  }
-
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients/${patientId}/parameters`);
-  // return response.json();
-
-  return Promise.resolve(mockModelParameters);
-}
-
-/**
- * Update DBS model parameters (demo only - no real backend call)
- */
-export async function updateModelParameters(
-  parameters: Partial<ModelParameters>
-): Promise<ModelParameters> {
-  if (isDemoMode) {
-    // Mock: return updated parameters
-    return Promise.resolve({ ...mockModelParameters, ...parameters });
-  }
-
-  // Future: Use real API
-  // const response = await fetch(
-  //   `${apiBaseUrl}/patients/${patientId}/parameters`,
-  //   {
-  //     method: 'PATCH',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify(parameters),
-  //   }
-  // );
-  // return response.json();
-
-  return Promise.resolve({ ...mockModelParameters, ...parameters });
-}
-
-/**
- * Get patient metrics for dashboard tiles
- */
-export async function getPatientMetrics(): Promise<PatientMetrics> {
-  if (isDemoMode) {
-    return Promise.resolve(mockPatientMetrics);
-  }
-
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients/${patientId}/metrics`);
-  // return response.json();
-
-  return Promise.resolve(mockPatientMetrics);
-}
-
-/**
- * Get DBS parameter history for before/after comparison
- */
-export async function getDBSParameterHistory(): Promise<DBSParameterHistory> {
-  if (isDemoMode) {
-    return Promise.resolve(mockDBSParameterHistory);
-  }
-
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients/${patientId}/parameters/history`);
-  // return response.json();
-
-  return Promise.resolve(mockDBSParameterHistory);
-}
-
-/**
- * Get tremor timeline data from wearable
- */
-export async function getTremorTimeline(): Promise<TremorTimelinePoint[]> {
-  if (isDemoMode) {
-    return Promise.resolve(mockTremorTimeline);
-  }
-
-  // Future: Use real API
-  // const response = await fetch(`${apiBaseUrl}/patients/${patientId}/tremor-timeline`);
-  // return response.json();
-
-  return Promise.resolve(mockTremorTimeline);
-}
