@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, MouseEvent } from 'react';
 
 interface CardProps {
   children: ReactNode;
   className?: string;
   variant?: 'default' | 'subtle' | 'metric';
   hover?: boolean;
+  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 }
 
 /**
@@ -16,6 +17,7 @@ export function Card({
   className = '',
   variant = 'default',
   hover = false,
+  onClick,
 }: CardProps) {
   const baseClasses =
     'rounded-md border transition-all duration-200';
@@ -32,7 +34,10 @@ export function Card({
     : '';
 
   return (
-    <div className={`${baseClasses} ${variantClasses} ${hoverClasses} ${className}`}>
+    <div 
+      className={`${baseClasses} ${variantClasses} ${hoverClasses} ${className}`}
+      onClick={onClick}
+    >
       {children}
     </div>
   );

@@ -1,19 +1,21 @@
+import { useState } from 'react';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
+import { PatientPromForm } from '../components/PatientPromForm';
+import { PatientPromHistory } from '../components/PatientPromHistory';
 
 /**
- * PatientDashboard - patient view showing personal overview
- * Note: No backend endpoint for patient-specific data yet
+ * PatientDashboard - patient view showing personal overview and PROM assessments
  */
 export function PatientDashboard() {
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+
   return (
     <PatientLayout>
-      <div className="px-8 py-6">
-        <div className="mb-8">
+      <div className="px-8 py-6 space-y-8">
+        <div>
           <h1 className="text-3xl font-bold text-text-main">Your Overview</h1>
-          <p className="text-text-muted text-base mt-2">
-            Your DBS therapy information
-          </p>
+          <p className="text-text-muted text-base mt-2">Your DBS therapy information</p>
         </div>
 
         <Card className="p-6">
@@ -33,6 +35,16 @@ export function PatientDashboard() {
             </div>
           </div>
         </Card>
+
+        <div>
+          <h2 className="text-2xl font-bold text-text-main mb-4">Daily Assessment</h2>
+          <PatientPromForm onPatientIdChange={setSelectedPatientId} />
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-bold text-text-main mb-4">Past Assessments</h2>
+          <PatientPromHistory patientId={selectedPatientId} />
+        </div>
       </div>
     </PatientLayout>
   );
