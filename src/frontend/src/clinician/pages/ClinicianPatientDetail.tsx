@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ClinicianLayout } from '../../layouts/ClinicianLayout';
 import { LoadingState } from '../../components/common/LoadingState';
-import { IMUUploadModal } from '../components/IMUUploadModal';
 import type { PatientDetail } from '../../lib/types';
 import { PatientDetailView } from '../components/PatientDetailView';
 import { DbsStateSection } from '../components/DbsStateSection';
@@ -39,7 +38,7 @@ export function ClinicianPatientDetail() {
   if (isLoading) {
     return (
       <ClinicianLayout>
-        <div className="px-8 py-6">
+        <div className="px-4 py-3">
           <LoadingState />
         </div>
       </ClinicianLayout>
@@ -49,10 +48,10 @@ export function ClinicianPatientDetail() {
   if (!patient) {
     return (
       <ClinicianLayout>
-        <div className="px-8 py-6">
+        <div className="px-4 py-3">
           <button
             onClick={() => navigate('/clinician')}
-            className="text-brand-blue hover:text-brand-navy font-semibold mb-4"
+            className="text-brand-blue hover:text-brand-navy font-semibold mb-2"
           >
             ← Back to Patients
           </button>
@@ -64,11 +63,11 @@ export function ClinicianPatientDetail() {
 
   return (
     <ClinicianLayout>
-      <div className="px-8 py-6">
+      <div className="px-4 py-3 space-y-3">
         {/* Breadcrumb Navigation */}
         <button
           onClick={() => navigate('/clinician')}
-          className="text-brand-blue hover:text-brand-navy font-semibold mb-6 flex items-center"
+          className="text-brand-blue hover:text-brand-navy font-semibold flex items-center"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -77,10 +76,10 @@ export function ClinicianPatientDetail() {
         </button>
 
         {/* Upload IMU Data Button */}
-        <div className="mb-6 flex justify-end">
+        <div className="flex justify-end">
           <button
             onClick={() => setShowIMUModal(true)}
-            className="px-6 py-2 bg-brand-blue text-white font-semibold rounded-lg hover:bg-brand-navy transition-colors flex items-center"
+            className="px-4 py-2 bg-brand-blue text-white font-semibold rounded-sm hover:bg-brand-navy transition-colors duration-75 flex items-center"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -88,11 +87,12 @@ export function ClinicianPatientDetail() {
             Upload IMU Data
           </button>
         </div>
+
         {/* Patient Detail View */}
         <PatientDetailView patient={patient} />
 
         {/* DBS State Section */}
-        <DbsStateSection patientId={patient.id} />
+        <DbsStateSection patientId={patient.id} patient={patient} />
 
         {/* DBS Tuning Section */}
         <DbsTuningSection patientId={patient.id} />

@@ -11,3 +11,4 @@ src/backend/uv.lock
 *.pyc
 *.pyo
 src/backend/dbs_agent/faiss_index
+.vscode/
