@@ -4,3 +4,4 @@
 *uv.lock
 *.egg-info
 *.csv
+src/backend/uv.lock

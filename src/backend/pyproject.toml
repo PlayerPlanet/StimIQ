@@ -11,4 +11,6 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.0.0",
+    "numpy>=2.4.2",
+    "torch>=2.10.0",
 ]
