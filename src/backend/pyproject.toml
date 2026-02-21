@@ -13,4 +13,8 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "numpy>=2.4.2",
     "torch>=2.10.0",
+    "sim",
 ]
+
+[tool.uv.sources]
+sim = { path = "../sim", editable = true }
