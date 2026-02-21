@@ -5,3 +5,4 @@
 *.egg-info
 *.csv
 *PADS
+src/backend/dbs-agent/agent.env
