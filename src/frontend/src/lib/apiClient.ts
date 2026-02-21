@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import type { Patient, CreatePatientRequest, IMUUploadResponse } from './types';
-=======
 import type { Patient, PatientDetail, CreatePatientRequest, IMUUploadResponse } from './types';
->>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -29,11 +25,7 @@ export async function getClinicianPatients(): Promise<Patient[]> {
  * Get patient detail by ID
  * GET /api/patients/{patientId}
  */
-<<<<<<< HEAD
-export async function getPatientDetail(patientId: string): Promise<Patient> {
-=======
 export async function getPatientDetail(patientId: string): Promise<PatientDetail> {
->>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
   const response = await fetch(`${API_BASE_URL}/patients/${patientId}`);
   if (!response.ok) throw new Error('Patient not found');
   return response.json();
