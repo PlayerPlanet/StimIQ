@@ -14,6 +14,10 @@ min_distance_frac: 0.05
 bounds_expansion: 0.1
 # minimum samples required to fit GP; below this the last row is returned
 fallback_min_samples: 3
+# optional patient id to fetch <patient_id>.csv from Supabase storage
+patient_id: b63028e5-22c8-4f12-804e-988ab3f30226
+# optional explicit storage bucket for patient CSVs (overrides env/settings)
+storage_bucket: null
 # optional per-parameter bounds (applies to every electrode for that base)
 valid keys: amp, freq_hz, pulse_width_s, phase_rad
 # example:

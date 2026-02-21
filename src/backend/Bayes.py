@@ -31,7 +31,7 @@ try:
 	from sklearn.exceptions import ConvergenceWarning
 except Exception as e:
 	raise ImportError(
-		"Bayes.py requires scikit-learn. Install it with `pip install scikit-learn`."
+		"bayes.py requires scikit-learn. Install it with `pip install scikit-learn`."
 	) from e
 try:
 	from omegaconf import DictConfig, OmegaConf
@@ -113,6 +113,7 @@ def model(
 	exploration_weight: float = 0.2,
 	min_distance_frac: float = 0.05,
 	cfg: Optional[Any] = None,
+	patient_id: Optional[str] = None,
 ) -> Dict[str, Any]:
 	"""Fetch last `n` datapoints and propose next parameters.
 
@@ -125,12 +126,15 @@ def model(
 	csv_path = None
 	bounds_expansion = 0.1
 	fallback_min_samples = 3
+	storage_bucket = "datapoints"
 	if cfg is not None and OmegaConf is not None:
 		c = OmegaConf.to_container(cfg, resolve=True)
 		csv_path = c.get("csv_path", None)
 		n = int(c.get("n", n))
 		severity_col = c.get("severity_col", severity_col)
 		param_columns = c.get("param_columns", param_columns)
+		# allow patient_id in config (e.g., configs/bayes.yaml)
+		patient_id = c.get("patient_id", patient_id)
 		n_candidates = int(c.get("n_candidates", n_candidates))
 		random_state = int(c.get("random_state", random_state))
 		batch_size = int(c.get("batch_size", batch_size))
@@ -139,6 +143,17 @@ def model(
 		bounds_expansion = float(c.get("bounds_expansion", bounds_expansion))
 		fallback_min_samples = int(c.get("fallback_min_samples", fallback_min_samples))
 		cfg_bounds = c.get("bounds", None)
+		storage_bucket = c.get("storage_bucket", storage_bucket)
+
+# If Supabase is available, prefer the bucket name from runtime settings
+if get_supabase is not None:
+	try:
+		from backend.config import get_settings
+
+		storage_bucket = get_settings().supabase_datapoints_bucket
+	except Exception:
+		# keep existing value if settings not available
+		pass
 
 	# determine data source: prefer explicit data_path param, else config csv_path,
 	# else attempt Supabase Storage (patient csv), then optional table fallback
@@ -218,6 +233,16 @@ def model(
 	# detect parameter columns if not provided
 	if param_columns is None:
 		param_columns = _detect_param_columns(df)
+		# fallback: if detection failed, use all columns as parameters when no severity present
+		if not param_columns:
+			if severity_col not in df.columns:
+				cols_candidate = list(df.columns)
+			else:
+				cols_candidate = [c for c in df.columns if c != severity_col]
+			if len(cols_candidate) % 4 == 0 and len(cols_candidate) > 0:
+				param_columns = cols_candidate
+			else:
+				raise ValueError("No parameter columns found in `stimuli` table and CSV columns are not a multiple of 4")
 	if not param_columns:
 		raise ValueError("No parameter columns found in configured stimuli source")
 	if severity_col not in df.columns:
@@ -259,6 +284,22 @@ def model(
 	inds = np.where(np.isnan(X))
 	if inds[0].size > 0:
 		X[inds] = np.take(col_means, inds[1])
+
+	# compute target losses: prefer explicit severity column, else use calculate_loss
+	if severity_col in df.columns:
+		y = df[severity_col].to_numpy(dtype=float)
+	else:
+		if calculate_loss is None:
+			raise ValueError("No severity column and local loss function unavailable")
+		y_list = []
+		for row in X:
+			if row.size % 4 != 0:
+				raise ValueError(f"Expected row length multiple of 4, got {row.size}")
+			n_elec = row.size // 4
+			param_matrix = row.reshape(n_elec, 4).T
+			loss_val = calculate_loss(param_matrix)
+			y_list.append(float(loss_val))
+		y = np.asarray(y_list, dtype=float)
 
 	# standardize inputs and outputs
 	x_scaler = StandardScaler()
