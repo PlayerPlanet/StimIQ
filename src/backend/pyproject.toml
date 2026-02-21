@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "FastAPI backend for StimIQ - Deep Brain Stimulation parameter optimization"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,4 +16,12 @@ dependencies = [
     "pandas>=3.0.1",
     "pypdf>=6.7.1",
     "python-dotenv>=1.2.1",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "supabase>=2.9.0",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.0.0",
+    "numpy>=2.4.2",
+    "torch>=2.10.0",
 ]
