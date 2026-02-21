@@ -1,0 +1,19 @@
+defaults:
+  - brain: bgtcs
+  - periphery: springmass6dof
+  - noise: imu
+  - stimulation: default
+  - cohort: default
+  - sweep: default
+  - output: default
+  - _self_
+
+schema_version: sim.v1
+rollout:
+  dt: 0.001
+  duration_s: 10.0
+  imu_sample_rate_hz: 100.0
+  include_noise: true
+encoder:
+  reduction: sum
+seed: 0

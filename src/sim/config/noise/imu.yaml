@@ -1,0 +1,4 @@
+name: imu
+noise_std: 0.00
+bias_std: 0.00
+drift_per_s: 0.000
