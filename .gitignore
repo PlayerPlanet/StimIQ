@@ -1,0 +1,12 @@
+*.venv
+*__pycache__
+*.python-version
+*uv.lock
+*.egg-info
+*.csv
+*PADS
+src/backend/dbs-agent/agent.env
+src/backend/uv.lock
+*.env
+*.pyc
+*.pyo

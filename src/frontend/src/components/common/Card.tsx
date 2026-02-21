@@ -1,11 +1,18 @@
+<<<<<<< HEAD
+import type { ReactNode } from 'react';
+=======
 import type { ReactNode, MouseEvent } from 'react';
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 
 interface CardProps {
   children: ReactNode;
   className?: string;
   variant?: 'default' | 'subtle' | 'metric';
   hover?: boolean;
+<<<<<<< HEAD
+=======
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 }
 
 /**
@@ -17,7 +24,10 @@ export function Card({
   className = '',
   variant = 'default',
   hover = false,
+<<<<<<< HEAD
+=======
   onClick,
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 }: CardProps) {
   const baseClasses =
     'rounded-md border transition-all duration-200';
@@ -34,10 +44,14 @@ export function Card({
     : '';
 
   return (
+<<<<<<< HEAD
+    <div className={`${baseClasses} ${variantClasses} ${hoverClasses} ${className}`}>
+=======
     <div 
       className={`${baseClasses} ${variantClasses} ${hoverClasses} ${className}`}
       onClick={onClick}
     >
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
       {children}
     </div>
   );

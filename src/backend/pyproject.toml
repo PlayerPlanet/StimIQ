@@ -5,10 +5,27 @@ description = "FastAPI backend for StimIQ - Deep Brain Stimulation parameter opt
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "faiss-cpu>=1.13.2",
+    "google>=3.0.0",
+    "google-genai>=1.64.0",
+    "langchain>=1.2.10",
+    "langchain-community>=0.4.1",
+    "langchain-google-genai>=4.2.1",
+    "langchain-openai>=1.1.10",
+    "langgraph>=1.0.9",
+    "pandas>=3.0.1",
+    "pypdf>=6.7.1",
+    "python-dotenv>=1.2.1",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "supabase>=2.9.0",
     "python-multipart>=0.0.9",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.0.0",
+    "numpy>=2.4.2",
+    "torch>=2.10.0",
+    "sim",
 ]
+
+[tool.uv.sources]
+sim = { path = "../sim", editable = true }

@@ -1,0 +1,4 @@
+name: bgtcs_lite
+natural_freq_hz: 5.0
+damping: 1.2
+coupling: 0.8
