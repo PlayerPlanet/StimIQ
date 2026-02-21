@@ -102,4 +102,10 @@ export function ClinicianPatientDetail() {
           <IMUUploadModal
             patientId={patient.id}
             patientName={`${patient.first_name} ${patient.last_name}`}
-            onClose={() => setShowIMUModal(false)}\n          />\n        )}\n      </div>\n    </ClinicianLayout>\n  );\n}
+            onClose={() => setShowIMUModal(false)}
+          />
+        )}
+      </div>
+    </ClinicianLayout>
+  );
+}
