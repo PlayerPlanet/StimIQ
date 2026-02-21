@@ -8,3 +8,5 @@
 src/backend/dbs-agent/agent.env
 src/backend/uv.lock
 *.env
+*.pyc
+*.pyo
