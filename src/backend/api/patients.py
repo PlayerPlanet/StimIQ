@@ -2,7 +2,11 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 
 from database import get_supabase
+<<<<<<< HEAD
+from .schemas import CreatePatientRequest, PatientResponse
+=======
 from .schemas import CreatePatientRequest, PatientResponse, PatientDetailResponse
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 
 
 router = APIRouter(prefix="/patients", tags=["patients"])
@@ -48,9 +52,14 @@ async def create_patient(patient: CreatePatientRequest):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
+<<<<<<< HEAD
+@router.get("/{patient_id}", response_model=PatientResponse)
+async def get_patient(patient_id: UUID):
+=======
 @router.get("/{patient_id}", response_model=PatientDetailResponse)
 async def get_patient(patient_id: UUID):
     """Get detailed patient information including DBS treatment data"""
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
     supabase = get_supabase()
     
     try:
@@ -59,6 +68,9 @@ async def get_patient(patient_id: UUID):
         if not response.data:
             raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found")
         
+<<<<<<< HEAD
+        return PatientResponse(**response.data[0])
+=======
         patient_data = response.data[0]
         
         # For MVP, add mock DBS data if not present
@@ -81,6 +93,7 @@ async def get_patient(patient_id: UUID):
             })
         
         return PatientDetailResponse(**patient_data)
+>>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
         
     except HTTPException:
         raise
