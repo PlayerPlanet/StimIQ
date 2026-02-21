@@ -10,3 +10,4 @@ src/backend/uv.lock
 *.env
 *.pyc
 *.pyo
+.vscode/
