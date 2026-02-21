@@ -45,31 +45,37 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
     ]
     
     try:
-        # Get current DBS state (returns DbsState schema)
-        current_programming = get_dbs_state_for_patient(patient_id)
+        # Get current DBS state (returns DbsState Pydantic model)
+        current_state = get_dbs_state_for_patient(patient_id)
         
-        # Build proposed programming from recommended_channels
-        proposed_programming = DbsTuningRecommendation(
-            patient_id=patient_id,
-            recommended_parameters=recommended_channels,
-            explanations=[]
-        )
-        
-        patient_deltas = {
-            "tremor_reduction": "+30%",
-            "new_symptoms": ["Patient reports increased tingling in the right arm.", "Patient reports sleeping difficulties."]
+        # Build proposed programming as a dict with recommended channels
+        # (matching the structure that will be returned)
+        proposed_dict = {
+            "patient_id": patient_id,
+            "recommended_parameters": [ch.model_dump() for ch in recommended_channels]
         }
         
-        # Convert Pydantic models to dictionaries using model_dump()
-        result = interpret_dbs_parameters(
-            current_programming=current_programming.model_dump(),
-            proposed_programming=proposed_programming.model_dump(),
+        # Define patient deltas (symptom changes)
+        patient_deltas = {
+            "tremor_reduction": "+30%",
+            "new_symptoms": [
+                "Patient reports increased tingling in the right arm.", 
+                "Patient reports sleeping difficulties."
+            ]
+        }
+        
+        # Call agent: Convert current_state to dict, pass proposed as dict
+        # Agent returns: {"raw_response": str, "clean_ui_response": str}
+        agent_result = interpret_dbs_parameters(
+            current_programming=current_state.model_dump(),
+            proposed_programming=proposed_dict,
             patient_deltas=patient_deltas
         )
         
-        # Extract the clean UI response and split into explanation list
-        clean_response = result.get("clean_ui_response", "")
+        # Extract clean UI response and format as explanation list
+        clean_response = agent_result.get("clean_ui_response", "")
         explanations = [clean_response] if clean_response else ["Model failed to generate explanations."]
+        
     except Exception as e:
         explanations = [f"Model failed to generate explanations: {str(e)}"]
     
