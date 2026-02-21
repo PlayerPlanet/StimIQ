@@ -4,4 +4,16 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "faiss-cpu>=1.13.2",
+    "google>=3.0.0",
+    "google-genai>=1.64.0",
+    "langchain>=1.2.10",
+    "langchain-community>=0.4.1",
+    "langchain-google-genai>=4.2.1",
+    "langchain-openai>=1.1.10",
+    "langgraph>=1.0.9",
+    "pandas>=3.0.1",
+    "pypdf>=6.7.1",
+    "python-dotenv>=1.2.1",
+]
