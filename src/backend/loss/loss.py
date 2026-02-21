@@ -48,9 +48,11 @@ def _load_model_bundle(model_path: str) -> tuple[Any, np.ndarray, np.ndarray]:
     except ImportError as exc:
         raise ImportError("torch is required for loss inference") from exc
 
-    from sim.loss_model.models import build_cnn_regressor
+    from sim.loss_model.models import build_cnn_regressor, build_cnn_regressor_v1
 
-    payload = torch.load(model_path, map_location="cpu")
+    # Local trusted checkpoint may include numpy objects (norm stats),
+    # which requires full pickle loading on torch>=2.6.
+    payload = torch.load(model_path, map_location="cpu", weights_only=False)
 
     model = build_cnn_regressor()
     norm_mean = np.zeros((1, 1, 9), dtype=np.float32)
@@ -64,7 +66,12 @@ def _load_model_bundle(model_path: str) -> tuple[Any, np.ndarray, np.ndarray]:
             state_dict = payload["state_dict"]
 
         if state_dict is not None:
-            model.load_state_dict(state_dict)
+            try:
+                model.load_state_dict(state_dict)
+            except RuntimeError:
+                # Backward compatibility for checkpoints trained with the older CNN.
+                model = build_cnn_regressor_v1()
+                model.load_state_dict(state_dict)
 
         if "norm_mean" in payload and "norm_std" in payload:
             norm_mean = np.asarray(payload["norm_mean"], dtype=np.float32)
