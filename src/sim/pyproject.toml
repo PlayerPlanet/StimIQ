@@ -30,6 +30,8 @@ io = [
 ml = [
   "xgboost>=2.1.0",
   "torch>=2.4.0",
+  "tqdm>=4.66.0",
+  "scikit-learn>=1.8.0"
 ]
 
 [tool.setuptools]

@@ -127,12 +127,17 @@ def train_cnn_regressor(
     model = CNNRegressor()
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    try:
+        from tqdm.auto import trange
+    except ImportError:
+        trange = range
 
     best_state: dict[str, Any] | None = None
     best_val = float("inf")
     patience = 6
     no_improve = 0
-    for _ in range(epochs):
+    epoch_iter = trange(epochs, desc="CNN train", unit="epoch")
+    for _ in epoch_iter:
         model.train()
         for xb, yb in loader:
             optimizer.zero_grad(set_to_none=True)
@@ -145,6 +150,8 @@ def train_cnn_regressor(
         with torch.no_grad():
             val_pred = model(val_x)
             val_loss = float(criterion(val_pred, val_y).item())
+        if hasattr(epoch_iter, "set_postfix"):
+            epoch_iter.set_postfix(val_loss=f"{val_loss:.5f}", best=f"{best_val:.5f}")
         if val_loss < best_val:
             best_val = val_loss
             best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
