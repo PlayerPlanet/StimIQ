@@ -71,3 +71,9 @@ export interface HypotheticalSimulationResponse {
     }>;
   }>;
 }
+
+export interface AgentPromptResponse {
+  status: string;
+  message: string;
+  response_text: string;
+}

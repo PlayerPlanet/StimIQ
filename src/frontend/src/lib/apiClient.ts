@@ -5,6 +5,7 @@ import type {
   IMUUploadResponse,
   HypotheticalSimulationRequest,
   HypotheticalSimulationResponse,
+  AgentPromptResponse,
 } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -88,6 +89,24 @@ export async function simulateHypotheticalParameters(
 
   if (!response.ok) {
     throw new Error(`Simulation failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Send free-form prompt to clinician DBS agent.
+ * POST /api/clinician/agent-prompt
+ */
+export async function sendAgentPrompt(prompt: string): Promise<AgentPromptResponse> {
+  const response = await fetch(`${API_BASE_URL}/clinician/agent-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Agent prompt failed (HTTP ${response.status})`);
   }
 
   return response.json();
