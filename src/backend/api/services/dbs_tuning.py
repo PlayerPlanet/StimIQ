@@ -3,8 +3,6 @@ import logging
 
 from ..schemas.dbs_tuning import ChannelRecommendation, DbsTuningRecommendation
 from ..schemas.dbs_state import ChannelState
-from ...dbs_agent.agent import interpret_dbs_parameters
-from ...Bayes import model
 from .dbs_state import get_dbs_state_for_patient, get_mock_state_for_patient
 
 logger = logging.getLogger(__name__)
@@ -151,6 +149,10 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
         DbsTuningRecommendation object with AI-generated explanations
     """
     try:
+        # Import lazily to avoid API startup failure on optional model/agent config issues.
+        from Bayes import model
+        from dbs_agent.agent import interpret_dbs_parameters
+
         # Step 1: Get current DBS state
         current_state = get_dbs_state_for_patient(patient_id)
         current_programming = _channels_to_programming_dict(current_state.channels)
