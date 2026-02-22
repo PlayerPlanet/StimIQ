@@ -44,3 +44,30 @@ export interface IMUUploadResponse {
   file_path: string;
   uploaded_at: string;
 }
+
+export interface HypotheticalParameterTuple {
+  amplitude_ma: number;
+  frequency_hz: number;
+  pulse_width_us: number;
+  phase_deg: number;
+}
+
+export interface HypotheticalSimulationRequest {
+  tuple_count: 2 | 4 | 8 | 16;
+  parameter_tuples: HypotheticalParameterTuple[];
+}
+
+export interface HypotheticalSimulationResponse {
+  status: string;
+  message: string;
+  sampling_hz: number;
+  duration_s: number;
+  channels: Array<{
+    channel_id: number;
+    label: string;
+    points: Array<{
+      time_s: number;
+      deviation: number;
+    }>;
+  }>;
+}

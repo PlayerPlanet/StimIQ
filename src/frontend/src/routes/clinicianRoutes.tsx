@@ -1,5 +1,6 @@
 import { ClinicianDashboard } from '../clinician/pages/ClinicianDashboard';
 import { ClinicianPatientDetail } from '../clinician/pages/ClinicianPatientDetail';
+import { ClinicianSimulationLab } from '../clinician/pages/ClinicianSimulationLab';
 
 /**
  * Clinician view routes
@@ -10,6 +11,10 @@ export const clinicianRoutes = [
   {
     path: '/',
     element: <ClinicianDashboard />,
+  },
+  {
+    path: '/simulation',
+    element: <ClinicianSimulationLab />,
   },
   {
     path: '/:patientId',

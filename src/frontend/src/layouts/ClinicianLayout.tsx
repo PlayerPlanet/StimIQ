@@ -12,6 +12,7 @@ interface ClinicianLayoutProps {
 export function ClinicianLayout({ children }: ClinicianLayoutProps) {
   const sidebarLinks = [
     { label: 'Patients', path: '/clinician' },
+    { label: 'Simulation Lab', path: '/clinician/simulation' },
   ];
 
   return (
