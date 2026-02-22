@@ -35,45 +35,53 @@ def setup_vector_db():
     pdf_path = os.getenv("PDF_PATH", str(AGENT_DIR / "dbs_guidelines.pdf"))
     index_path = os.getenv("FAISS_INDEX_PATH", str(AGENT_DIR / "faiss_index")) # The folder where FAISS will save its data
     
-    # Initialize the embedding model first (needed for both loading and creating)
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-001", 
-        google_api_key=api_key # type: ignore
-    )
-
-    # 1. Check if we already have a saved index on the hard drive
-    if os.path.exists(index_path):
-        print(f"Loading existing FAISS index from '{index_path}'...")
-        
-        # Note: LangChain requires allow_dangerous_deserialization=True 
-        # when loading local pickle files for security reasons.
-        vectorstore = FAISS.load_local(
-            index_path, 
-            embeddings, 
-            allow_dangerous_deserialization=True 
+    try:
+        # Use a model compatible with Gemini API key auth.
+        embeddings = GoogleGenerativeAIEmbeddings(
+            model=os.getenv("EMBEDDING_MODEL", "models/text-embedding-004"),
+            google_api_key=api_key,  # type: ignore
         )
-        
-    # 2. If no saved index exists, create a new one from the PDF
-    else:
-        print(f"No local index found. Parsing '{pdf_path}' and creating new FAISS index...")
-        if not os.path.exists(pdf_path):
-            print(f"⚠️ Warning: '{pdf_path}' not found. Please place a PDF in the directory to use RAG.")
-            return None
+    except Exception as e:
+        print(f"Warning: failed to initialize embeddings. Vector DB disabled. Error: {e}")
+        return None
 
-        # Load and split the PDF
-        loader = PyPDFLoader(pdf_path)
-        docs = loader.load()
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        splits = text_splitter.split_documents(docs)
-        
-        # Generate embeddings and store in FAISS
-        vectorstore = FAISS.from_documents(splits, embeddings)
-        
-        # Save it locally for next time!
-        vectorstore.save_local(index_path)
-        print(f"Successfully saved new FAISS index to the '{index_path}' folder.")
-        
-    return vectorstore.as_retriever(search_kwargs={"k": 2})
+    try:
+        # 1. Check if we already have a saved index on the hard drive
+        if os.path.exists(index_path):
+            print(f"Loading existing FAISS index from '{index_path}'...")
+            
+            # Note: LangChain requires allow_dangerous_deserialization=True 
+            # when loading local pickle files for security reasons.
+            vectorstore = FAISS.load_local(
+                index_path, 
+                embeddings, 
+                allow_dangerous_deserialization=True 
+            )
+            
+        # 2. If no saved index exists, create a new one from the PDF
+        else:
+            print(f"No local index found. Parsing '{pdf_path}' and creating new FAISS index...")
+            if not os.path.exists(pdf_path):
+                print(f"⚠️ Warning: '{pdf_path}' not found. Please place a PDF in the directory to use RAG.")
+                return None
+
+            # Load and split the PDF
+            loader = PyPDFLoader(pdf_path)
+            docs = loader.load()
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+            splits = text_splitter.split_documents(docs)
+            
+            # Generate embeddings and store in FAISS
+            vectorstore = FAISS.from_documents(splits, embeddings)
+            
+            # Save it locally for next time!
+            vectorstore.save_local(index_path)
+            print(f"Successfully saved new FAISS index to the '{index_path}' folder.")
+            
+        return vectorstore.as_retriever(search_kwargs={"k": 2})
+    except Exception as e:
+        print(f"Warning: failed to build/load vector DB. RAG disabled. Error: {e}")
+        return None
 
 # Initialize the retriever globally
 retriever = setup_vector_db()

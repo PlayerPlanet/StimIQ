@@ -35,23 +35,32 @@ def setup_vector_db():
     pdf_path = os.getenv("PDF_PATH", str(AGENT_DIR / "dbs_guidelines.pdf"))
     index_path = os.getenv("FAISS_INDEX_PATH", str(AGENT_DIR / "faiss_index")) 
     
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-001", # Note: models/text-embedding-004 is recommended for newer deployments
-        google_api_key=api_key # type: ignore
-    )
+    try:
+        embeddings = GoogleGenerativeAIEmbeddings(
+            # Use a model compatible with Gemini API key auth.
+            model=os.getenv("EMBEDDING_MODEL", "models/text-embedding-004"),
+            google_api_key=api_key,  # type: ignore
+        )
+    except Exception as e:
+        print(f"Warning: failed to initialize embeddings. Vector DB disabled. Error: {e}")
+        return None
 
-    if os.path.exists(index_path):
-        return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True).as_retriever(search_kwargs={"k": 2})
-    else:
-        print(f"No local index found. Parsing '{pdf_path}'...")
-        if not os.path.exists(pdf_path):
-            print(f"⚠️ Warning: '{pdf_path}' not found. Vector DB disabled.")
-            return None
-        loader = PyPDFLoader(pdf_path)
-        splits = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(loader.load())
-        vectorstore = FAISS.from_documents(splits, embeddings)
-        vectorstore.save_local(index_path)
-        return vectorstore.as_retriever(search_kwargs={"k": 2})
+    try:
+        if os.path.exists(index_path):
+            return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True).as_retriever(search_kwargs={"k": 2})
+        else:
+            print(f"No local index found. Parsing '{pdf_path}'...")
+            if not os.path.exists(pdf_path):
+                print(f"⚠️ Warning: '{pdf_path}' not found. Vector DB disabled.")
+                return None
+            loader = PyPDFLoader(pdf_path)
+            splits = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(loader.load())
+            vectorstore = FAISS.from_documents(splits, embeddings)
+            vectorstore.save_local(index_path)
+            return vectorstore.as_retriever(search_kwargs={"k": 2})
+    except Exception as e:
+        print(f"Warning: failed to build/load vector DB. RAG disabled. Error: {e}")
+        return None
 
 retriever = setup_vector_db()
 
