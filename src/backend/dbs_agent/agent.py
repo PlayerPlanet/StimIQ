@@ -18,9 +18,15 @@ AGENT_DIR = Path(__file__).resolve().parent
 load_dotenv(AGENT_DIR / "agent.env")
 load_dotenv(AGENT_DIR.parent / ".env")
 
-api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+# Prefer GEMINI_API_KEY when both are present. In hosted environments, GOOGLE_API_KEY
+# may refer to a different Google API key that is not authorized for Gemini endpoints.
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 if not api_key:
-    raise RuntimeError("GOOGLE_API_KEY or GEMINI_API_KEY must be set (dbs_agent/agent.env or backend .env)")
+    raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY must be set (dbs_agent/agent.env or backend .env)")
+if os.getenv("GEMINI_API_KEY"):
+    print("Using GEMINI_API_KEY for DBS agent.")
+elif os.getenv("GOOGLE_API_KEY"):
+    print("Using GOOGLE_API_KEY for DBS agent.")
 
 # Initialize the LLM
 llm = ChatGoogleGenerativeAI(
