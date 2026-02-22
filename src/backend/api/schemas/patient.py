@@ -18,8 +18,6 @@ class PatientResponse(BaseModel):
     date_of_birth: Optional[date]
     notes: Optional[str]
     created_at: datetime
-<<<<<<< HEAD
-=======
 
 
 class PatientDetailResponse(PatientResponse):
@@ -46,4 +44,3 @@ class PatientDetailResponse(PatientResponse):
     treatment_status: Optional[str] = None  # active, monitoring, adjustment_needed
     last_programming_date: Optional[date] = None
     next_appointment: Optional[date] = None
->>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df

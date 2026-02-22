@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
@@ -38,6 +39,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Hydra override, e.g. rollout.duration_s=5.0 (repeatable)",
     )
+    p.add_argument("--stim-json", type=str, default="", help="Path to JSON containing 4xN stim matrix")
     p.add_argument("--seed", type=int, default=None)
     return p.parse_args()
 
@@ -52,6 +54,9 @@ def main() -> None:
     simulator = build_simulator(cfg)
     rollout = build_rollout_config(cfg)
     stim_on = build_stim_params(cfg)
+    if args.stim_json:
+        with open(args.stim_json, "r", encoding="utf-8") as f:
+            stim_on = StimParams.from_matrix(np.asarray(json.load(f), dtype=float))
     stim_off = StimParams.from_matrix(np.zeros_like(stim_on.as_matrix()))
 
     out_on = simulator.run(stim_params=stim_on, patient=patient, config=rollout, seed=seed)

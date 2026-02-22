@@ -1,7 +1,6 @@
 from typing import List
 from ..schemas.dbs_tuning import ChannelRecommendation, DbsTuningRecommendation
-from src.backend.dbs_agent.agent import interpret_dbs_parameters
-from services.dbs_state import get_dbs_state_for_patient
+from .dbs_state import get_dbs_state_for_patient
 
 def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
     """
@@ -45,6 +44,9 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
     ]
     
     try:
+        # Import lazily so API startup does not fail if agent env/config is missing.
+        from dbs_agent.agent import interpret_dbs_parameters
+
         # Get current DBS state (returns DbsState Pydantic model)
         current_state = get_dbs_state_for_patient(patient_id)
         
