@@ -76,7 +76,6 @@ const getDisplayScale = (maxAbsValue: number): { factor: number; unit: string } 
   if (maxAbsValue < 1e-9) return { factor: 1_000_000_000_000, unit: 'p' };
   if (maxAbsValue < 1e-6) return { factor: 1_000_000_000, unit: 'n' };
   if (maxAbsValue < 1e-3) return { factor: 1_000_000, unit: 'u' };
-  if (maxAbsValue < 1) return { factor: 1_000, unit: 'm' };
   return { factor: 1, unit: '' };
 };
 
