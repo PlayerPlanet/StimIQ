@@ -12,6 +12,7 @@ interface PatientLayoutProps {
 export function PatientLayout({ children }: PatientLayoutProps) {
   const sidebarLinks = [
     { label: 'Overview', path: '/patient' },
+    { label: 'Standard tests', path: '/patient/standard-tests' },
   ];
 
   return (
