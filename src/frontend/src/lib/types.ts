@@ -87,6 +87,20 @@ export interface DbsTuningWithSimulationResponse {
   simulated_data?: HypotheticalSimulationResponse | null;
 }
 
+export interface OptimizationStepRequest {
+  tuple_count: 2 | 4 | 8 | 16;
+  current_parameter_tuples: HypotheticalParameterTuple[];
+  include_simulation?: boolean;
+}
+
+export interface OptimizationStepResponse {
+  status: string;
+  message: string;
+  step_severity: number;
+  next_parameter_tuples: HypotheticalParameterTuple[];
+  simulation?: HypotheticalSimulationResponse | null;
+}
+
 export interface AgentPromptResponse {
   status: string;
   message: string;

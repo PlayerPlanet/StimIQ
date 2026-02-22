@@ -151,7 +151,6 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
     try:
         # Import lazily to avoid API startup failure on optional model/agent config issues.
         from Bayes import model
-        from dbs_agent.agent import interpret_dbs_parameters
 
         # Step 1: Get current DBS state
         current_state = get_dbs_state_for_patient(patient_id)
@@ -182,13 +181,23 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
             patient_deltas["prom_trend"] = f"{prom_change:+.1f}%"
             patient_deltas["latest_prom_score"] = latest_prom
         
-        # Step 4: Call AI agent for clinical interpretation
-        ai_output = interpret_dbs_parameters(
-            current_programming=current_programming,
-            proposed_programming=proposed_programming,
-            patient_deltas=patient_deltas,
-        )
-        ui_explanation = ai_output.get("clean_ui_response", "")
+        # Step 4: Call AI agent for clinical interpretation (optional).
+        ui_explanation = ""
+        try:
+            from dbs_agent.agent import interpret_dbs_parameters
+
+            ai_output = interpret_dbs_parameters(
+                current_programming=current_programming,
+                proposed_programming=proposed_programming,
+                patient_deltas=patient_deltas,
+            )
+            ui_explanation = ai_output.get("clean_ui_response", "")
+        except Exception as ai_exc:
+            logger.warning(
+                "AI interpretation unavailable for patient %s: %s. Continuing with Bayes recommendation only.",
+                patient_id,
+                ai_exc,
+            )
         
         # Step 5: Build recommended channels from proposed parameters
         recommended_channels = []
@@ -224,5 +233,5 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
         )
         
     except Exception as e:
-        logger.warning(f"Failed to generate AI tuning recommendation for patient {patient_id}: {e}. Falling back to mock data.")
+        logger.warning(f"Failed to generate Bayes tuning recommendation for patient {patient_id}: {e}. Falling back to mock data.")
         return get_mock_tuning_recommendation(patient_id)

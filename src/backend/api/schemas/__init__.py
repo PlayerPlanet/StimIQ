@@ -8,6 +8,9 @@ from .simulation import (
     SimulationChannelPoint,
     SimulationChannelTrace,
     SimulationResponse,
+    OptimizationInputParameterTuple,
+    OptimizationStepRequest,
+    OptimizationStepResponse,
 )
 from .agent import AgentPromptRequest, AgentPromptResponse
 
@@ -27,6 +30,9 @@ __all__ = [
     "SimulationChannelPoint",
     "SimulationChannelTrace",
     "SimulationResponse",
+    "OptimizationInputParameterTuple",
+    "OptimizationStepRequest",
+    "OptimizationStepResponse",
     "AgentPromptRequest",
     "AgentPromptResponse",
 ]

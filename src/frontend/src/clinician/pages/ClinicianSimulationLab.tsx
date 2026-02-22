@@ -12,9 +12,8 @@ import {
 } from 'recharts';
 import { ClinicianLayout } from '../../layouts/ClinicianLayout';
 import { Card } from '../../components/common/Card';
-import { getDbsTuningWithOptionalSimulation, simulateHypotheticalParameters } from '../../lib/apiClient';
+import { optimizeSimulationStep, simulateHypotheticalParameters } from '../../lib/apiClient';
 import type {
-  DbsTuningChannelRecommendation,
   HypotheticalParameterTuple,
   HypotheticalSimulationRequest,
   HypotheticalSimulationResponse,
@@ -51,31 +50,13 @@ const makeTuple = (index: number): HypotheticalParameterTuple => ({
 const buildTupleArray = (count: 2 | 4 | 8 | 16): HypotheticalParameterTuple[] =>
   Array.from({ length: count }, (_, i) => makeTuple(i));
 
-const OPTIMIZATION_PATIENT_ID = 'simulation-lab-demo';
-const OPTIMIZATION_STEPS = 6;
+const OPTIMIZATION_STEPS = 50;
 
-const normalizePhaseDeg = (phaseRad: number): number => {
-  const deg = (phaseRad * 180) / Math.PI;
-  return ((deg + 180) % 360) - 180;
+const normalizePulseWidthUs = (value: number): number => {
+  if (value <= 500) return Math.max(1, value);
+  if (value <= 500000) return Math.max(1, Math.min(500, value / 1000));
+  return Math.max(1, Math.min(500, value / 1000000));
 };
-
-const mapRecommendedToTuple = (
-  recommendation: DbsTuningChannelRecommendation
-): HypotheticalParameterTuple => ({
-  amplitude_ma: Number(recommendation.amplitude ?? 0),
-  frequency_hz: Number(recommendation.frequency ?? 0),
-  pulse_width_us: Number(recommendation.pulse_width_s ?? 0) * 1_000_000,
-  phase_deg: normalizePhaseDeg(Number(recommendation.phase_rad ?? 0)),
-});
-
-const buildTupleArrayFromRecommendations = (
-  recommendations: DbsTuningChannelRecommendation[],
-  count: 2 | 4 | 8 | 16
-): HypotheticalParameterTuple[] =>
-  Array.from({ length: count }, (_, i) => {
-    const recommended = recommendations[i];
-    return recommended ? mapRecommendedToTuple(recommended) : makeTuple(i);
-  });
 
 const computeSeverityScore = (simulation: HypotheticalSimulationResponse): number => {
   const allDeviations = simulation.channels.flatMap((channel) =>
@@ -85,6 +66,18 @@ const computeSeverityScore = (simulation: HypotheticalSimulationResponse): numbe
     return 0;
   }
   return allDeviations.reduce((sum, value) => sum + value, 0) / allDeviations.length;
+};
+
+const getDisplayScale = (maxAbsValue: number): { factor: number; unit: string } => {
+  if (!Number.isFinite(maxAbsValue) || maxAbsValue <= 0) {
+    return { factor: 1, unit: '' };
+  }
+
+  if (maxAbsValue < 1e-9) return { factor: 1_000_000_000_000, unit: 'p' };
+  if (maxAbsValue < 1e-6) return { factor: 1_000_000_000, unit: 'n' };
+  if (maxAbsValue < 1e-3) return { factor: 1_000_000, unit: 'u' };
+  if (maxAbsValue < 1) return { factor: 1_000, unit: 'm' };
+  return { factor: 1, unit: '' };
 };
 
 export function ClinicianSimulationLab() {
@@ -161,28 +154,37 @@ export function ClinicianSimulationLab() {
     const nextSeverityHistory: Array<{ step: number; severity: number }> = [];
 
     try {
+      let workingTuples = parameterTuples.slice(0, tupleCount).map((tuple) => ({
+        ...tuple,
+        pulse_width_us: normalizePulseWidthUs(tuple.pulse_width_us),
+      }));
+      setParameterTuples(workingTuples);
       for (let step = 1; step <= OPTIMIZATION_STEPS; step += 1) {
-        const tuningResponse = await getDbsTuningWithOptionalSimulation(OPTIMIZATION_PATIENT_ID, {
-          includeSimulation: true,
-          tupleCount,
+        setStatusType('success');
+        setStatusMessage(`Optimizing step ${step}/${OPTIMIZATION_STEPS}...`);
+
+        const stepResponse = await optimizeSimulationStep({
+          tuple_count: tupleCount,
+          current_parameter_tuples: workingTuples,
+          include_simulation: true,
         });
 
-        const shiftedTuples = buildTupleArrayFromRecommendations(
-          tuningResponse.recommended_parameters ?? [],
-          tupleCount
-        );
-        setParameterTuples(shiftedTuples);
+        workingTuples = stepResponse.next_parameter_tuples.map((tuple) => ({ ...tuple }));
+        setParameterTuples(workingTuples);
 
         const simResponse =
-          tuningResponse.simulated_data ??
+          stepResponse.simulation ??
           (await simulateHypotheticalParameters({
             tuple_count: tupleCount,
-            parameter_tuples: shiftedTuples,
+            parameter_tuples: workingTuples,
           }));
 
         setSimulationData(simResponse);
 
-        const severity = computeSeverityScore(simResponse);
+        const severity =
+          typeof stepResponse.step_severity === 'number'
+            ? stepResponse.step_severity
+            : computeSeverityScore(simResponse);
         nextSeverityHistory.push({ step, severity });
         setSeverityHistory([...nextSeverityHistory]);
       }
@@ -197,7 +199,7 @@ export function ClinicianSimulationLab() {
     }
   };
 
-  const chartData = useMemo(() => {
+  const chartDataRaw = useMemo(() => {
     if (!simulationData || simulationData.channels.length < 3) {
       return [];
     }
@@ -210,6 +212,39 @@ export function ClinicianSimulationLab() {
       ch3: ch3.points[index]?.deviation ?? 0,
     }));
   }, [simulationData]);
+
+  const simulationDisplayScale = useMemo(() => {
+    const maxAbs = chartDataRaw.reduce((max, row) => {
+      const rowMax = Math.max(Math.abs(row.ch1), Math.abs(row.ch2), Math.abs(row.ch3));
+      return Math.max(max, rowMax);
+    }, 0);
+    return getDisplayScale(maxAbs);
+  }, [chartDataRaw]);
+
+  const chartData = useMemo(
+    () =>
+      chartDataRaw.map((row) => ({
+        time_s: row.time_s,
+        ch1: row.ch1 * simulationDisplayScale.factor,
+        ch2: row.ch2 * simulationDisplayScale.factor,
+        ch3: row.ch3 * simulationDisplayScale.factor,
+      })),
+    [chartDataRaw, simulationDisplayScale.factor]
+  );
+
+  const severityDisplayScale = useMemo(() => {
+    const maxAbs = severityHistory.reduce((max, point) => Math.max(max, Math.abs(point.severity)), 0);
+    return getDisplayScale(maxAbs);
+  }, [severityHistory]);
+
+  const severityHistoryScaled = useMemo(
+    () =>
+      severityHistory.map((point) => ({
+        step: point.step,
+        severity: point.severity * severityDisplayScale.factor,
+      })),
+    [severityHistory, severityDisplayScale.factor]
+  );
 
   return (
     <ClinicianLayout>
@@ -231,9 +266,9 @@ export function ClinicianSimulationLab() {
                     <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#d9e2ec" />
                       <XAxis dataKey="time_s" type="number" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} unit="s" />
-                      <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} />
+                      <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} unit={simulationDisplayScale.unit} />
                       <Tooltip
-                        formatter={(value) => `${Number(value ?? 0).toFixed(3)}`}
+                        formatter={(value) => `${Number(value ?? 0).toFixed(3)} ${simulationDisplayScale.unit}`}
                         labelFormatter={(label) => `t=${Number(label).toFixed(2)}s`}
                       />
                       <Legend />
@@ -288,11 +323,11 @@ export function ClinicianSimulationLab() {
                   {severityHistory.length > 0 ? (
                     <div className="h-[150px] border border-border-subtle rounded-sm bg-surface-alt p-2">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={severityHistory} margin={{ top: 10, right: 16, left: 0, bottom: 10 }}>
+                        <LineChart data={severityHistoryScaled} margin={{ top: 10, right: 16, left: 0, bottom: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#d9e2ec" />
                           <XAxis dataKey="step" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} />
-                          <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} />
-                          <Tooltip formatter={(value) => `${Number(value ?? 0).toFixed(4)}`} />
+                          <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} unit={severityDisplayScale.unit} />
+                          <Tooltip formatter={(value) => `${Number(value ?? 0).toFixed(3)} ${severityDisplayScale.unit}`} />
                           <Line type="monotone" dataKey="severity" name="Severity" stroke="#dc2626" dot={false} strokeWidth={2} />
                         </LineChart>
                       </ResponsiveContainer>

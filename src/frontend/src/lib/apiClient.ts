@@ -6,6 +6,8 @@ import type {
   HypotheticalSimulationRequest,
   HypotheticalSimulationResponse,
   DbsTuningWithSimulationResponse,
+  OptimizationStepRequest,
+  OptimizationStepResponse,
   AgentPromptResponse,
 } from './types';
 
@@ -120,6 +122,26 @@ export async function getDbsTuningWithOptionalSimulation(
 
   if (!response.ok) {
     throw new Error(`DBS tuning request failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Run one closed-loop optimization step.
+ * POST /api/clinician/optimize-step
+ */
+export async function optimizeSimulationStep(
+  data: OptimizationStepRequest
+): Promise<OptimizationStepResponse> {
+  const response = await fetch(`${API_BASE_URL}/clinician/optimize-step`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Optimize step failed (HTTP ${response.status})`);
   }
 
   return response.json();
