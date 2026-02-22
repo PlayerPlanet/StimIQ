@@ -1,18 +1,11 @@
-<<<<<<< HEAD
-import type { ReactNode } from 'react';
-=======
 import type { ReactNode, MouseEvent } from 'react';
->>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 
 interface CardProps {
   children: ReactNode;
   className?: string;
   variant?: 'default' | 'subtle' | 'metric';
   hover?: boolean;
-<<<<<<< HEAD
-=======
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
->>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 }
 
 /**
@@ -24,34 +17,27 @@ export function Card({
   className = '',
   variant = 'default',
   hover = false,
-<<<<<<< HEAD
-=======
   onClick,
->>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
 }: CardProps) {
   const baseClasses =
-    'rounded-md border transition-all duration-200';
+    'rounded-sm border transition-all duration-75';
 
   const variantClasses =
     variant === 'metric'
-      ? 'bg-brand-blue text-white border-brand-blue shadow-lg'
+      ? 'bg-brand-blue text-white border-brand-blue'
       : variant === 'subtle'
-      ? 'bg-brand-blue-soft border-border-subtle shadow-sm'
-      : 'bg-surface border-border-subtle shadow-sm';
+      ? 'bg-brand-blue-soft border-border-subtle'
+      : 'bg-surface border-border-subtle';
 
   const hoverClasses = hover
-    ? 'hover:shadow-md'
+    ? 'hover:border-brand-blue'
     : '';
 
   return (
-<<<<<<< HEAD
-    <div className={`${baseClasses} ${variantClasses} ${hoverClasses} ${className}`}>
-=======
     <div 
       className={`${baseClasses} ${variantClasses} ${hoverClasses} ${className}`}
       onClick={onClick}
     >
->>>>>>> 19bb16b0c0df269fd02b6ae68b82e702e3c894df
       {children}
     </div>
   );

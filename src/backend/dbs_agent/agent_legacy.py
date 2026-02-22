@@ -35,7 +35,7 @@ def setup_vector_db():
     # Initialize the embedding model first (needed for both loading and creating)
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001", 
-        google_api_key=api_key
+        google_api_key=api_key # type: ignore
     )
 
     # 1. Check if we already have a saved index on the hard drive
