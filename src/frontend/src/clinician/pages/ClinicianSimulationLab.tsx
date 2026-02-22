@@ -148,7 +148,7 @@ export function ClinicianSimulationLab() {
                     <XAxis dataKey="time_s" type="number" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} unit="s" />
                     <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 11 }} />
                     <Tooltip
-                      formatter={(value: number) => `${Number(value).toFixed(3)}`}
+                      formatter={(value) => `${Number(value ?? 0).toFixed(3)}`}
                       labelFormatter={(label) => `t=${Number(label).toFixed(2)}s`}
                     />
                     <Legend />
