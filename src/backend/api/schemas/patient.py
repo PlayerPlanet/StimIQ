@@ -19,7 +19,6 @@ class PatientResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-
 class PatientDetailResponse(PatientResponse):
     """Extended patient information for detail view"""
     # Contact Information

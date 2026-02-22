@@ -43,7 +43,7 @@ def get_dbs_state_for_patient(patient_id: str) -> DbsState:
     # Generate mock timeseries data
     tremor_series, prom_series = _generate_mock_timeseries()
     
-    # Generate mock channel data (4 channels)
+    # Generate mock channel data (8 channels)
     channels = [
         ChannelState(
             channel_id=1,
@@ -72,6 +72,34 @@ def get_dbs_state_for_patient(patient_id: str) -> DbsState:
             voltage=4.0,
             frequency=130.0,
             time_on_hours=18.5,
+        ),
+        ChannelState(
+            channel_id=5,
+            amplitude=2.2,
+            voltage=3.9,
+            frequency=125.0,
+            time_on_hours=17.8,
+        ),
+        ChannelState(
+            channel_id=6,
+            amplitude=2.6,
+            voltage=4.4,
+            frequency=135.0,
+            time_on_hours=18.2,
+        ),
+        ChannelState(
+            channel_id=7,
+            amplitude=2.9,
+            voltage=4.7,
+            frequency=130.0,
+            time_on_hours=17.6,
+        ),
+        ChannelState(
+            channel_id=8,
+            amplitude=2.3,
+            voltage=4.1,
+            frequency=128.0,
+            time_on_hours=18.9,
         ),
     ]
     
