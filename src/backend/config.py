@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Optional
 import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -24,6 +25,31 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "case_sensitive": False,
     }
+
+    @field_validator("supabase_url", mode="before")
+    @classmethod
+    def normalize_supabase_url(cls, v: str) -> str:
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("SUPABASE_URL must be a string")
+
+        # Cloud env values sometimes include wrapping quotes or trailing newlines.
+        normalized = v.strip().strip("\"'")
+        if not normalized.startswith("http://") and not normalized.startswith("https://"):
+            raise ValueError("SUPABASE_URL must start with http:// or https://")
+        if ".supabase.co" not in normalized:
+            raise ValueError("SUPABASE_URL must target a *.supabase.co host")
+        return normalized
+
+    @field_validator("supabase_service_role_key", mode="before")
+    @classmethod
+    def normalize_service_role_key(cls, v: str) -> str:
+        if v is None:
+            return v
+        if not isinstance(v, str):
+            raise ValueError("SUPABASE_SERVICE_ROLE_KEY must be a string")
+        return v.strip().strip("\"'")
 
 
 @lru_cache(maxsize=1)
