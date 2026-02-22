@@ -61,16 +61,16 @@ export function DbsTuningSection({ patientId }: DbsTuningSectionProps) {
     return {
       channel_id: channelId,
       amplitude: channel?.amplitude ?? null,
-      voltage: channel?.voltage ?? null,
       frequency: channel?.frequency ?? null,
-      time_on_hours: channel?.time_on_hours ?? null,
+      pulse_width_s: channel?.pulse_width_s ?? null,
+      phase_rad: channel?.phase_rad ?? null,
     };
   });
 
   const formatNumber = (value: number | null, digits: number) =>
     value === null ? '-' : value.toFixed(digits);
 
-  type ChannelMetric = 'amplitude' | 'voltage' | 'frequency' | 'time_on_hours';
+  type ChannelMetric = 'amplitude' | 'frequency' | 'pulse_width_s' | 'phase_rad';
 
   const getDiffColor = (channelId: number, metric: ChannelMetric, value: number | null) => {
     if (value === null) return null;
@@ -151,21 +151,6 @@ export function DbsTuningSection({ patientId }: DbsTuningSectionProps) {
                   ))}
                 </tr>
                 <tr className="border-b border-border-subtle">
-                  <td className="px-2 py-1.5 font-medium text-text-main">Voltage (V)</td>
-                  {displayChannels.map((channel) => (
-                    <td
-                      key={channel.channel_id}
-                      className={getCellClasses(channel.channel_id)}
-                      onMouseEnter={() => setHoveredChannelId(channel.channel_id)}
-                      style={{
-                        backgroundColor: getDiffColor(channel.channel_id, 'voltage', channel.voltage) ?? undefined,
-                      }}
-                    >
-                      {formatNumber(channel.voltage, 1)}
-                    </td>
-                  ))}
-                </tr>
-                <tr className="border-b border-border-subtle">
                   <td className="px-2 py-1.5 font-medium text-text-main">Frequency (Hz)</td>
                   {displayChannels.map((channel) => (
                     <td
@@ -180,18 +165,33 @@ export function DbsTuningSection({ patientId }: DbsTuningSectionProps) {
                     </td>
                   ))}
                 </tr>
-                <tr>
-                  <td className="px-2 py-1.5 font-medium text-text-main">Time On (h)</td>
+                <tr className="border-b border-border-subtle">
+                  <td className="px-2 py-1.5 font-medium text-text-main">Pulse Width (μs)</td>
                   {displayChannels.map((channel) => (
                     <td
                       key={channel.channel_id}
                       className={getCellClasses(channel.channel_id)}
                       onMouseEnter={() => setHoveredChannelId(channel.channel_id)}
                       style={{
-                        backgroundColor: getDiffColor(channel.channel_id, 'time_on_hours', channel.time_on_hours) ?? undefined,
+                        backgroundColor: getDiffColor(channel.channel_id, 'pulse_width_s', channel.pulse_width_s) ?? undefined,
                       }}
                     >
-                      {formatNumber(channel.time_on_hours, 1)}
+                      {formatNumber(channel.pulse_width_s, 0)}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="px-2 py-1.5 font-medium text-text-main">Phase (rad)</td>
+                  {displayChannels.map((channel) => (
+                    <td
+                      key={channel.channel_id}
+                      className={getCellClasses(channel.channel_id)}
+                      onMouseEnter={() => setHoveredChannelId(channel.channel_id)}
+                      style={{
+                        backgroundColor: getDiffColor(channel.channel_id, 'phase_rad', channel.phase_rad) ?? undefined,
+                      }}
+                    >
+                      {formatNumber(channel.phase_rad, 2)}
                     </td>
                   ))}
                 </tr>
