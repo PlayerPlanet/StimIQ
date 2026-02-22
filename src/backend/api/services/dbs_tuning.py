@@ -163,6 +163,7 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
         # Step 3: Build patient deltas from timeseries if available
         patient_deltas = {
             "tremor_reduction": "pending optimization",
+            "mood_stability": "pending optimization",
             "new_symptoms": [],
         }
         if current_state.tremor_timeseries and len(current_state.tremor_timeseries) >= 2:
@@ -170,6 +171,14 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
             prev_tremor = current_state.tremor_timeseries[-2].avg_tremor_activity
             tremor_change = ((latest_tremor - prev_tremor) / prev_tremor * 100) if prev_tremor != 0 else 0
             patient_deltas["tremor_trend"] = f"{tremor_change:+.1f}%"
+        
+        # Include PROM (Patient Reported Outcome Measure) for QoL context
+        if current_state.prom_timeseries and len(current_state.prom_timeseries) >= 2:
+            latest_prom = current_state.prom_timeseries[-1].avg_prom_score
+            prev_prom = current_state.prom_timeseries[-2].avg_prom_score
+            prom_change = ((latest_prom - prev_prom) / prev_prom * 100) if prev_prom != 0 else 0
+            patient_deltas["prom_trend"] = f"{prom_change:+.1f}%"
+            patient_deltas["latest_prom_score"] = latest_prom
         
         # Step 4: Call AI agent for clinical interpretation
         ai_output = interpret_dbs_parameters(
@@ -183,15 +192,23 @@ def get_dbs_tuning_recommendation(patient_id: str) -> DbsTuningRecommendation:
         recommended_channels = []
         proposed_channels = proposed_programming.get("channels", [])
         for ch_data in proposed_channels:
+            channel_id = ch_data.get("channel_id")
+            if channel_id is None or not isinstance(channel_id, int) or channel_id <= 0:
+                logger.warning(f"Invalid channel_id in proposed parameters: {channel_id}. Skipping channel.")
+                continue
             recommended_channels.append(
                 ChannelRecommendation(
-                    channel_id=ch_data.get("channel_id", 0),
+                    channel_id=channel_id,
                     amplitude=ch_data.get("amplitude", 0.0),
                     frequency=ch_data.get("frequency", 0.0),
                     pulse_width_s=ch_data.get("pulse_width_s", 0.0),
                     phase_rad=ch_data.get("phase_rad", 0.0),
                 )
             )
+        
+        if not recommended_channels:
+            logger.warning(f"No valid recommended channels for patient {patient_id}. Falling back to mock data.")
+            return get_mock_tuning_recommendation(patient_id)
         
         # If AI generated an explanation, use it; otherwise use a default
         explanations = [ui_explanation] if ui_explanation.strip() else [
