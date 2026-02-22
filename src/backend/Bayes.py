@@ -145,8 +145,7 @@ def model(
 		cfg_bounds = c.get("bounds", None)
 		storage_bucket = c.get("storage_bucket", storage_bucket)
 
-# If Supabase is available, prefer the bucket name from runtime settings
-if get_supabase is not None:
+	# If runtime settings are available, prefer their bucket name.
 	try:
 		from backend.config import get_settings
 
@@ -297,7 +296,7 @@ if get_supabase is not None:
 				raise ValueError(f"Expected row length multiple of 4, got {row.size}")
 			n_elec = row.size // 4
 			param_matrix = row.reshape(n_elec, 4).T
-			loss_val = calculate_loss(param_matrix)
+			loss_val = calculate_loss(param_matrix, patient_id=patient_id)
 			y_list.append(float(loss_val))
 		y = np.asarray(y_list, dtype=float)
 

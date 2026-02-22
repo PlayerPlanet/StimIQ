@@ -115,7 +115,7 @@ def run(
 
         for j, next_params in enumerate(batch, start=1):
             params_matrix = _params_to_matrix(next_params)
-            severity = float(calculate_loss(params_matrix))
+            severity = float(calculate_loss(params_matrix, patient_id=settings.bayes_patient_id))
             losses.append(severity)
 
             row = {k: float(v) for k, v in next_params.items()}

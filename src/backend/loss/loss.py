@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ XGBOOST_MODEL_PATH_DEFAULT = (
 WINDOW_SIZE = 256
 WINDOW_STRIDE = 128
 ROLLOUT_DURATION_S = 300.0  # 5 minutes
+BASELINE_CACHE_PATH_DEFAULT = Path(__file__).resolve().parents[1] / "artifacts" / "baseline_rms_cache.json"
 
 
 def _ensure_sim_importable() -> None:
@@ -104,6 +106,53 @@ def _resolve_xgboost_model_path() -> Path:
     return XGBOOST_MODEL_PATH_DEFAULT
 
 
+def _baseline_cache_enabled() -> bool:
+    try:
+        from config import get_settings
+    except Exception:
+        return True
+    return bool(get_settings().loss_baseline_cache_enabled)
+
+
+def _resolve_baseline_cache_path() -> Path:
+    try:
+        from config import get_settings
+    except Exception:
+        return BASELINE_CACHE_PATH_DEFAULT
+
+    configured = get_settings().loss_baseline_cache_path
+    if configured:
+        return Path(configured)
+    return BASELINE_CACHE_PATH_DEFAULT
+
+
+def _load_baseline_cache(path: Path) -> dict[str, float]:
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, float] = {}
+    for k, v in data.items():
+        try:
+            out[str(k)] = float(v)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _save_baseline_cache(path: Path, cache: dict[str, float]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(cache, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _baseline_cache_key(patient_id: str, seed: int, n_channels: int, duration_s: float, dt: float) -> str:
+    return f"{patient_id}|seed={seed}|ch={n_channels}|dur={duration_s}|dt={dt}"
+
+
 @lru_cache(maxsize=1)
 def _load_model_bundle(model_path: str) -> tuple[Any, np.ndarray, np.ndarray]:
     _ensure_sim_importable()
@@ -168,7 +217,7 @@ def _acc_rms(simulated: Any) -> float:
     return float(np.sqrt(np.mean(simulated.acc ** 2, dtype=np.float64)))
 
 
-def calculate_loss(parameters: Any, backend: str | None = None) -> float:
+def calculate_loss(parameters: Any, backend: str | None = None, patient_id: str | None = None) -> float:
     """Compute a scalar loss for the given stimulation parameter matrix.
 
     Backends
@@ -216,10 +265,36 @@ def calculate_loss(parameters: Any, backend: str | None = None) -> float:
         )
         # Use the same noise seed for both runs so only the stim params differ.
         sim_seed = seed + 1
-        rms_baseline = _acc_rms(
-            simulator.run(stim_params=zero_stim, patient=patient,
-                          config=rollout_cfg, rng=np.random.default_rng(sim_seed))
-        )
+        rms_baseline: float | None = None
+        cache_path: Path | None = None
+        cache_key: str | None = None
+
+        if patient_id and _baseline_cache_enabled():
+            cache_path = _resolve_baseline_cache_path()
+            cache_key = _baseline_cache_key(
+                patient_id=patient_id,
+                seed=seed,
+                n_channels=stim.n_channels,
+                duration_s=float(rollout_cfg.duration_s),
+                dt=float(rollout_cfg.dt),
+            )
+            cached = _load_baseline_cache(cache_path)
+            rms_baseline = cached.get(cache_key)
+
+        if rms_baseline is None:
+            rms_baseline = _acc_rms(
+                simulator.run(
+                    stim_params=zero_stim,
+                    patient=patient,
+                    config=rollout_cfg,
+                    rng=np.random.default_rng(sim_seed),
+                )
+            )
+            if cache_path is not None and cache_key is not None:
+                cached = _load_baseline_cache(cache_path)
+                cached[cache_key] = float(rms_baseline)
+                _save_baseline_cache(cache_path, cached)
+
         rms_stim = _acc_rms(
             simulator.run(stim_params=stim, patient=patient,
                           config=rollout_cfg, rng=np.random.default_rng(sim_seed))

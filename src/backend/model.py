@@ -206,7 +206,7 @@ def model(
 				raise ValueError(f"Expected row length multiple of 4, got {row.size}")
 			n_elec = row.size // 4
 			param_matrix = row.reshape(n_elec, 4).T
-			loss_val = calculate_loss(param_matrix)
+			loss_val = calculate_loss(param_matrix, patient_id=patient_id)
 			y_list.append(float(loss_val))
 		y = np.asarray(y_list, dtype=float)
 

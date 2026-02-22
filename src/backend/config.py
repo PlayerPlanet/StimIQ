@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     bayes_datapoints_object_path: Optional[str] = None
     loss_model_backend: str = "cnn"
     loss_xgboost_model_path: Optional[str] = None
+    loss_baseline_cache_path: Optional[str] = None
+    loss_baseline_cache_enabled: bool = True
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     api_reload: bool = True
