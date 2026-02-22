@@ -160,6 +160,40 @@ def interpret_dbs_parameters(current_programming: dict, proposed_programming: di
         "clean_ui_response": clean_ui_output
     }
 
+
+def run_clinical_agent_prompt(user_input: str) -> dict:
+    """
+    Run a free-form clinician prompt through the DBS agent and return raw + cleaned text.
+    """
+    system_prompt = """You are a specialized clinical AI assistant for Deep Brain Stimulation (DBS).
+Provide concise, clinically useful answers. Do not diagnose, and clearly label uncertainty.
+Use the search_medical_guidelines_impl tool when guidelines are relevant to the prompt."""
+
+    agent = create_react_agent(llm, tools=[search_medical_guidelines])
+    final_raw_output = ""
+
+    for chunk in agent.stream({"messages": [SystemMessage(content=system_prompt), HumanMessage(content=user_input)]}):
+        if "agent" in chunk:
+            message = chunk["agent"]["messages"][0]
+            text_chunk = ""
+
+            if hasattr(message, "content"):
+                if isinstance(message.content, list):
+                    for item in message.content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            text_chunk += item.get("text", "")
+                elif isinstance(message.content, str):
+                    text_chunk += message.content
+
+            final_raw_output += text_chunk + "\n"
+
+    clean_ui_output = re.sub(r"<scratchpad>.*?</scratchpad>", "", final_raw_output, flags=re.DOTALL).strip()
+
+    return {
+        "raw_response": final_raw_output,
+        "clean_ui_response": clean_ui_output,
+    }
+
 # --- 5. Execution Example ---
 if __name__ == "__main__":
     current = {"frequency": 130, "voltage": 2.5, "pulse_width": 60, "phase": 20}
