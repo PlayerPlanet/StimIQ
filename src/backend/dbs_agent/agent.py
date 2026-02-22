@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import json
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -13,11 +14,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
 # --- 1. Setup & Initialization ---
-load_dotenv("dbs-agent/agent.env")
+AGENT_DIR = Path(__file__).resolve().parent
+load_dotenv(AGENT_DIR / "agent.env")
+load_dotenv(AGENT_DIR.parent / ".env")
 
 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 if not api_key:
-    raise RuntimeError("GOOGLE_API_KEY or GEMINI_API_KEY must be set in agent.env")
+    raise RuntimeError("GOOGLE_API_KEY or GEMINI_API_KEY must be set (dbs_agent/agent.env or backend .env)")
 
 # Initialize the LLM
 llm = ChatGoogleGenerativeAI(
@@ -29,8 +32,8 @@ llm = ChatGoogleGenerativeAI(
 
 # --- 2. Vector Database Setup ---
 def setup_vector_db():
-    pdf_path = os.getenv("PDF_PATH", "dbs_guidelines.pdf")
-    index_path = os.getenv("FAISS_INDEX_PATH", "faiss_index") 
+    pdf_path = os.getenv("PDF_PATH", str(AGENT_DIR / "dbs_guidelines.pdf"))
+    index_path = os.getenv("FAISS_INDEX_PATH", str(AGENT_DIR / "faiss_index")) 
     
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001", # Note: models/text-embedding-004 is recommended for newer deployments
