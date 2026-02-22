@@ -31,6 +31,8 @@ def build_simulator(cfg: DictConfig) -> Simulator:
         natural_freq_hz=float(cfg.brain.natural_freq_hz),
         damping=float(cfg.brain.damping),
         coupling=float(cfg.brain.coupling),
+        inhibition=float(cfg.brain.get("inhibition", 80.0)),
+        drive_noise_std=float(cfg.brain.get("drive_noise_std", 10.0)),
     )
     periphery = SpringMass3D(
         freq_hz=float(cfg.periphery.freq_hz),

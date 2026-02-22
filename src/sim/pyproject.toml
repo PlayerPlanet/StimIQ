@@ -27,6 +27,12 @@ brain = [
 io = [
   "supabase>=2.15.3",
 ]
+ml = [
+  "xgboost>=2.1.0",
+  "torch>=2.4.0",
+  "tqdm>=4.66.0",
+  "scikit-learn>=1.8.0"
+]
 
 [tool.setuptools]
 packages = [
@@ -37,6 +43,7 @@ packages = [
   "sim.config",
   "sim.datasets",
   "sim.periphery",
+  "sim.loss_model",
   "sim.scripts",
   "sim.sensor",
   "sim.stimulation",
@@ -52,6 +59,7 @@ packages = [
 "sim.config" = "config"
 "sim.datasets" = "datasets"
 "sim.periphery" = "periphery"
+"sim.loss_model" = "loss_model"
 "sim.scripts" = "scripts"
 "sim.sensor" = "sensor"
 "sim.stimulation" = "stimulation"
@@ -60,3 +68,8 @@ packages = [
 
 [tool.setuptools.package-data]
 "sim.config" = ["*.yaml", "*/*.yaml"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

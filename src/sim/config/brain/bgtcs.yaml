@@ -1,4 +1,12 @@
 name: bgtcs_lite
 natural_freq_hz: 5.0
-damping: 1.2
+# ζ < 1 → underdamped so the brain actually oscillates at ~5 Hz (tremor)
+damping: 0.15
 coupling: 0.8
+# HFS suppression gain: scales extra velocity-damping proportional to stim RMS
+# higher value → stronger DBS suppression effect
+inhibition: 80.0
+# Spontaneous stochastic drive (std of white noise added to velocity, Euler-Maruyama).
+# Stationary tremor: E[z^2] = sigma^2 / (2 * eff_damp * omega_n^2)
+# Calibrated so baseline (no-stim) acc RMS ~0.03-0.06 g for a typical patient.
+drive_noise_std: 10.0

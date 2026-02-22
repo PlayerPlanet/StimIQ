@@ -12,3 +12,5 @@ src/backend/uv.lock
 *.pyo
 src/backend/dbs_agent/faiss_index
 .vscode/
+*.png
+*.npz
