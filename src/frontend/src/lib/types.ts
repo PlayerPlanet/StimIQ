@@ -72,6 +72,21 @@ export interface HypotheticalSimulationResponse {
   }>;
 }
 
+export interface DbsTuningChannelRecommendation {
+  channel_id: number;
+  amplitude: number;
+  frequency: number;
+  pulse_width_s: number;
+  phase_rad: number;
+}
+
+export interface DbsTuningWithSimulationResponse {
+  patient_id: string;
+  recommended_parameters: DbsTuningChannelRecommendation[];
+  explanations: string[];
+  simulated_data?: HypotheticalSimulationResponse | null;
+}
+
 export interface AgentPromptResponse {
   status: string;
   message: string;

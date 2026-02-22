@@ -5,6 +5,7 @@ import type {
   IMUUploadResponse,
   HypotheticalSimulationRequest,
   HypotheticalSimulationResponse,
+  DbsTuningWithSimulationResponse,
   AgentPromptResponse,
 } from './types';
 
@@ -89,6 +90,36 @@ export async function simulateHypotheticalParameters(
 
   if (!response.ok) {
     throw new Error(`Simulation failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get DBS tuning recommendation and optionally return simulated data for those parameters.
+ * GET /api/clinician/dbs_tuning/{patientId}
+ */
+export async function getDbsTuningWithOptionalSimulation(
+  patientId: string,
+  options?: {
+    includeSimulation?: boolean;
+    tupleCount?: 2 | 4 | 8 | 16;
+  }
+): Promise<DbsTuningWithSimulationResponse> {
+  const params = new URLSearchParams();
+  if (options?.includeSimulation) {
+    params.set('include_simulation', 'true');
+  }
+  if (options?.tupleCount) {
+    params.set('tuple_count', String(options.tupleCount));
+  }
+
+  const query = params.toString();
+  const url = `${API_BASE_URL}/clinician/dbs_tuning/${patientId}${query ? `?${query}` : ''}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`DBS tuning request failed (HTTP ${response.status})`);
   }
 
   return response.json();
