@@ -97,7 +97,6 @@ export function ClinicianDashboard() {
                         </h3>
                         <div className="text-xs text-text-muted mt-0.5">
                           {age && <span>Age: {age}</span>}
-                          {patient.notes && <span className="ml-2">— {patient.notes}</span>}
                         </div>
                       </div>
                       <div className="text-brand-blue flex-shrink-0 ml-2">

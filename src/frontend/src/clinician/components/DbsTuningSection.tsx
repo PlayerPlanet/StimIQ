@@ -220,18 +220,18 @@ export function DbsTuningSection({ patientId }: DbsTuningSectionProps) {
         </Card>
       </div>
 
-      {/* Explanations */}
-      <Card className="p-3">
-        <h3 className="text-sm font-semibold text-text-main mb-2">Why these parameters?</h3>
-        <div className="space-y-2 text-xs">
+      {/* Agent Reasoning */}
+      <Card className="p-6 border-2 border-brand-blue/20 bg-surface-alt">
+        <h3 className="text-xl font-semibold text-text-main mb-3">Agent Reasoning</h3>
+        <div className="space-y-3 text-base">
           {data.explanations.map((explanation, idx) => (
             <div key={idx} className="flex gap-2">
-              <div className="flex-shrink-0 text-brand-blue mt-0.5">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <div className="flex-shrink-0 text-brand-blue mt-1">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               </div>
-              <p className="text-text-main">{explanation}</p>
+              <p className="text-text-main leading-relaxed">{explanation}</p>
             </div>
           ))}
         </div>
