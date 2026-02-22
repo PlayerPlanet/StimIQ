@@ -7,7 +7,7 @@ import { clinicianRoutes } from './clinicianRoutes';
  * Defines route hierarchy:
  *   /patient/* → Patient routes
  *   /clinician/* → Clinician routes
- *   / → Redirect to patient
+ *   / → Redirect to clinician
  */
 export function AppRouter() {
   return (
@@ -31,9 +31,9 @@ export function AppRouter() {
           />
         ))}
 
-        {/* Catch-all: redirect to patient view */}
-        <Route path="/" element={<Navigate to="/patient" replace />} />
-        <Route path="*" element={<Navigate to="/patient" replace />} />
+        {/* Catch-all: redirect to clinician view */}
+        <Route path="/" element={<Navigate to="/clinician" replace />} />
+        <Route path="*" element={<Navigate to="/clinician" replace />} />
       </Routes>
     </Router>
   );

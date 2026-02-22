@@ -18,14 +18,14 @@ interface SidebarProps {
  * Sidebar component - persistent left navigation with deep blue theme
  * Role-aware design for patient and clinician views
  */
-export function Sidebar({ links, title = 'Healthcare DBS', userType, navActions, footerActions }: SidebarProps) {
+export function Sidebar({ links, title = 'StimIQ - DBS Treatment', userType, navActions, footerActions }: SidebarProps) {
   const location = useLocation();
 
   return (
     <aside className="w-64 bg-brand-navy min-h-screen flex flex-col shadow-xl">
       {/* Logo/Header */}
       <div className="p-6 border-b border-brand-blue/20">
-        <h2 className="text-xl font-heading font-bold text-white tracking-tight">{title}</h2>
+        <h2 className="text-4xl font-heading font-bold text-white tracking-tight">{title}</h2>
         <p className="text-xs text-white/70 mt-1 font-medium">
           {userType === 'patient' ? 'Patient Portal' : 'Clinician Dashboard'}
         </p>
