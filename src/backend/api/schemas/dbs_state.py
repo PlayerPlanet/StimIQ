@@ -7,9 +7,9 @@ class ChannelState(BaseModel):
     """DBS channel configuration and state."""
     channel_id: int = Field(..., gt=0)
     amplitude: float = Field(..., ge=0)
-    voltage: float = Field(..., ge=0)
     frequency: float = Field(..., gt=0)
-    time_on_hours: float = Field(..., ge=0)
+    pulse_width_s: float = Field(..., ge=0)
+    phase_rad: float = Field(..., ge=0)
     
     model_config = ConfigDict(from_attributes=True)
 
