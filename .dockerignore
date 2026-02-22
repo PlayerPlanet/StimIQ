@@ -8,6 +8,11 @@ __pycache__/
 venv/
 env/
 ENV/
+**/.venv/
+**/venv/
+**/env/
+**/ENV/
+**/__pycache__/
 *.egg-info/
 dist/
 build/
@@ -28,6 +33,11 @@ build/
 .git/
 .gitignore
 .github/
+
+# Large local artifacts and caches
+src/sim/artifacts/
+src/backend/artifacts/
+*.pt
 
 # Testing
 .pytest_cache/
