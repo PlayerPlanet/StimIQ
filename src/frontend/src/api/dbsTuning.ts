@@ -5,6 +5,8 @@ export interface ChannelRecommendation {
   amplitude: number;
   voltage: number;
   frequency: number;
+  pulse_width_s: number;
+  phase_rad: number;
   time_on_hours: number;
 }
 
