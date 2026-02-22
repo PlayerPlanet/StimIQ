@@ -16,8 +16,9 @@ RUN uv sync
 # Copy application code
 COPY src/backend /app
 
-# Expose port
-EXPOSE 8000
+# Expose port (Cloud Run expects PORT, default 8080)
+EXPOSE 8080
 
-# Run FastAPI app
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run FastAPI app using PORT env var (fallback to 8080)
+# Use shell form so environment variable expansion works
+CMD uv run uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}

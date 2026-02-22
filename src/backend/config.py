@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Optional
+import os
 from pydantic_settings import BaseSettings
 
 
@@ -15,8 +16,8 @@ class Settings(BaseSettings):
     loss_xgboost_model_path: Optional[str] = None
     loss_baseline_cache_path: Optional[str] = None
     loss_baseline_cache_enabled: bool = True
-    api_host: str = "127.0.0.1"
-    api_port: int = 8000
+    api_host: str = "0.0.0.0"
+    api_port: int = int(os.getenv("PORT", "8080"))
     api_reload: bool = True
 
     model_config = {
