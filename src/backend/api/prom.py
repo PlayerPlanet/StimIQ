@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from database import get_supabase
 from .schemas.prom import PromTestCreate, PromTestResponse
+from .services.patient_identity import ensure_patient_exists
 
 
 router = APIRouter(prefix="/prom_tests", tags=["prom_tests"])
@@ -17,7 +18,7 @@ async def create_prom_test(prom_test: PromTestCreate):
 
     prom_data = {
         "id": str(uuid4()),
-        "patient_id": prom_test.patient_id,
+        "patient_id": ensure_patient_exists(prom_test.patient_id, source="prom_tests"),
         "test_date": prom_test.test_date.isoformat(),
         "q1": prom_test.q1,
         "q2": prom_test.q2,

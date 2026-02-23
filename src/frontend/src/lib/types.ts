@@ -116,6 +116,7 @@ export interface HandTrackingWristFrameInput {
   t_ms: number;
   wrist_raw: HandTrackingPoint | null;
   conf?: number | null;
+  inferred_hand?: 'LEFT' | 'RIGHT' | 'UNKNOWN' | null;
 }
 
 export interface LineFollowSessionCreateRequest {
@@ -185,6 +186,7 @@ export interface FingerTapFrameInput {
   wrist: HandTrackingPoint | null;
   middle_mcp: HandTrackingPoint | null;
   conf?: number | null;
+  inferred_hand?: 'LEFT' | 'RIGHT' | 'UNKNOWN' | null;
 }
 
 export interface FingerTapSessionCreateRequest {
@@ -241,4 +243,21 @@ export interface FingerTapSessionResult {
   };
   artifacts: Record<string, string>;
   created_at: string;
+}
+
+export type SpeechStepType =
+  | 'SUSTAINED_VOWEL'
+  | 'STANDARDIZED_SENTENCE'
+  | 'RAPID_SYLLABLE_REPETITION';
+
+export interface SpeechRecordingUploadResponse {
+  id: string;
+  patient_id: string | null;
+  session_id: string | null;
+  step_type: SpeechStepType;
+  storage_bucket: string;
+  storage_path: string;
+  mime_type: string;
+  duration_ms: number | null;
+  transcript: string | null;
 }

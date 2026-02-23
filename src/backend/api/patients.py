@@ -1,15 +1,16 @@
 from uuid import UUID
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from database import get_supabase
 from .schemas import CreatePatientRequest, PatientResponse, PatientDetailResponse
+from .services.patient_identity import is_auto_provisioned_visitor_patient
 
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
 
 @router.get("", response_model=list[PatientResponse])
-async def list_patients():
+async def list_patients(include_visitors: bool = Query(False)):
     """List all patients"""
     supabase = get_supabase()
     
@@ -18,8 +19,12 @@ async def list_patients():
         
         if not response.data:
             return []
-        
-        return [PatientResponse(**patient) for patient in response.data]
+
+        patient_rows = response.data
+        if not include_visitors:
+            patient_rows = [row for row in patient_rows if not is_auto_provisioned_visitor_patient(row)]
+
+        return [PatientResponse(**patient) for patient in patient_rows]
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

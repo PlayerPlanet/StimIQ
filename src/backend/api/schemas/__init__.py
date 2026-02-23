@@ -33,7 +33,12 @@ from .hand_tracking import (
     FingerTapMetrics,
     FingerTapResult,
 )
-from .speech import SpeechStepRecord, SpeechEvaluationRequest, SpeechEvaluationResponse
+from .speech import (
+    SpeechStepRecord,
+    SpeechEvaluationRequest,
+    SpeechEvaluationResponse,
+    SpeechUploadResponse,
+)
 
 __all__ = [
     "CreatePatientRequest",
@@ -79,4 +84,5 @@ __all__ = [
     "SpeechStepRecord",
     "SpeechEvaluationRequest",
     "SpeechEvaluationResponse",
+    "SpeechUploadResponse",
 ]

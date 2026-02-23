@@ -37,3 +37,15 @@ class SpeechEvaluationRequest(BaseModel):
 class SpeechEvaluationResponse(BaseModel):
     loss: float | None = None
     msg: str = Field(..., max_length=300)
+
+
+class SpeechUploadResponse(BaseModel):
+    id: UUID
+    patient_id: UUID | None = None
+    session_id: UUID | None = None
+    step_type: Literal["SUSTAINED_VOWEL", "STANDARDIZED_SENTENCE", "RAPID_SYLLABLE_REPETITION"]
+    storage_bucket: str
+    storage_path: str
+    mime_type: str
+    duration_ms: int | None = None
+    transcript: str | None = None

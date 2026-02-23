@@ -13,7 +13,22 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+function normalizeInferredHand(label: string | undefined): 'LEFT' | 'RIGHT' | 'UNKNOWN' {
+  if (!label) {
+    return 'UNKNOWN';
+  }
+  const upper = label.toUpperCase();
+  if (upper === 'LEFT') {
+    return 'LEFT';
+  }
+  if (upper === 'RIGHT') {
+    return 'RIGHT';
+  }
+  return 'UNKNOWN';
+}
+
 const MAX_CAPTURE_MS = 15000;
+const TAP_TOUCH_THRESHOLD = 0.045;
 
 export function PatientFingerTappingTestSession() {
   const navigate = useNavigate();
@@ -28,16 +43,18 @@ export function PatientFingerTappingTestSession() {
   const capturedFramesRef = useRef<FingerTapFrameInput[]>([]);
   const captureRunningRef = useRef<boolean>(false);
   const autoProcessTriggeredRef = useRef<boolean>(false);
-  const traceRef = useRef<HandTrackingPoint[]>([]);
-  const frameCounterRef = useRef<number>(0);
   const [cameraState, setCameraState] = useState<'idle' | 'starting' | 'active' | 'error'>('idle');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [trackingState, setTrackingState] = useState<'idle' | 'loading' | 'active' | 'error'>('idle');
   const [trackingError, setTrackingError] = useState<string | null>(null);
   const [captureState, setCaptureState] = useState<'idle' | 'capturing' | 'completed'>('idle');
+  const [elapsedCaptureMs, setElapsedCaptureMs] = useState(0);
   const [capturedCount, setCapturedCount] = useState(0);
-  const [liveFinger, setLiveFinger] = useState<HandTrackingPoint | null>(null);
-  const [tracePoints, setTracePoints] = useState<HandTrackingPoint[]>([]);
+  const [liveThumbTip, setLiveThumbTip] = useState<HandTrackingPoint | null>(null);
+  const [liveIndexTip, setLiveIndexTip] = useState<HandTrackingPoint | null>(null);
+  const [estimatedThumbEndpoint, setEstimatedThumbEndpoint] = useState<HandTrackingPoint | null>(null);
+  const [liveTouchCenter, setLiveTouchCenter] = useState<HandTrackingPoint | null>(null);
+  const [isTouchingNow, setIsTouchingNow] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<FingerTapSessionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +127,7 @@ export function PatientFingerTappingTestSession() {
   const startCapture = () => {
     capturedFramesRef.current = [];
     setCapturedCount(0);
+    setElapsedCaptureMs(0);
     captureStartTimeRef.current = performance.now();
     captureRunningRef.current = true;
     autoProcessTriggeredRef.current = false;
@@ -132,28 +150,45 @@ export function PatientFingerTappingTestSession() {
         const detectResult = handLandmarker.detectForVideo(video, now);
         const landmarks = detectResult.landmarks?.[0];
         const handednessScore = detectResult.handednesses?.[0]?.[0]?.score;
+        const handednessLabel = detectResult.handednesses?.[0]?.[0]?.categoryName;
+        const inferredHand = normalizeInferredHand(handednessLabel);
 
         const thumbTip = landmarks?.[4];
         const indexTip = landmarks?.[8];
 
         if (indexTip) {
           const point = { x: clamp01(indexTip.x), y: clamp01(indexTip.y) };
-          traceRef.current.push(point);
-          if (traceRef.current.length > 250) {
-            traceRef.current.shift();
-          }
-          setLiveFinger(point);
+          setLiveIndexTip(point);
         } else {
-          setLiveFinger(null);
+          setLiveIndexTip(null);
         }
-
-        frameCounterRef.current += 1;
-        if (frameCounterRef.current % 3 === 0) {
-          setTracePoints([...traceRef.current]);
+        setLiveThumbTip(thumbTip ? { x: clamp01(thumbTip.x), y: clamp01(thumbTip.y) } : null);
+        setEstimatedThumbEndpoint(
+          indexTip
+            ? { x: clamp01(indexTip.x), y: clamp01(indexTip.y) }
+            : thumbTip
+              ? { x: clamp01(thumbTip.x), y: clamp01(thumbTip.y) }
+              : null
+        );
+        if (thumbTip && indexTip) {
+          const thumbPoint = { x: clamp01(thumbTip.x), y: clamp01(thumbTip.y) };
+          const indexPoint = { x: clamp01(indexTip.x), y: clamp01(indexTip.y) };
+          const dx = thumbPoint.x - indexPoint.x;
+          const dy = thumbPoint.y - indexPoint.y;
+          const isTouching = Math.sqrt(dx * dx + dy * dy) <= TAP_TOUCH_THRESHOLD;
+          setIsTouchingNow(isTouching);
+          setLiveTouchCenter({
+            x: clamp01((thumbPoint.x + indexPoint.x) / 2),
+            y: clamp01((thumbPoint.y + indexPoint.y) / 2),
+          });
+        } else {
+          setIsTouchingNow(false);
+          setLiveTouchCenter(null);
         }
 
         if (captureRunningRef.current) {
           const elapsedMs = Math.max(0, Math.round(now - captureStartTimeRef.current));
+          setElapsedCaptureMs(elapsedMs);
           const frame: FingerTapFrameInput = {
             t_ms: elapsedMs,
             thumb_tip: thumbTip ? { x: clamp01(thumbTip.x), y: clamp01(thumbTip.y) } : null,
@@ -161,6 +196,7 @@ export function PatientFingerTappingTestSession() {
             wrist: landmarks?.[0] ? { x: clamp01(landmarks[0].x), y: clamp01(landmarks[0].y) } : null,
             middle_mcp: landmarks?.[9] ? { x: clamp01(landmarks[9].x), y: clamp01(landmarks[9].y) } : null,
             conf: typeof handednessScore === 'number' ? clamp01(handednessScore) : landmarks ? 1 : 0,
+            inferred_hand: inferredHand,
           };
           capturedFramesRef.current.push(frame);
 
@@ -170,6 +206,7 @@ export function PatientFingerTappingTestSession() {
 
           if (elapsedMs >= MAX_CAPTURE_MS) {
             captureRunningRef.current = false;
+            setElapsedCaptureMs(MAX_CAPTURE_MS);
             setCaptureState('completed');
             setCapturedCount(capturedFramesRef.current.length);
             if (!autoProcessTriggeredRef.current) {
@@ -208,9 +245,12 @@ export function PatientFingerTappingTestSession() {
       }
 
       lastVideoTimeRef.current = -1;
-      traceRef.current = [];
-      setTracePoints([]);
-      setLiveFinger(null);
+      setLiveThumbTip(null);
+      setLiveIndexTip(null);
+      setEstimatedThumbEndpoint(null);
+      setLiveTouchCenter(null);
+      setIsTouchingNow(false);
+      setElapsedCaptureMs(0);
       setCameraState('active');
       setTrackingState('active');
       startCapture();
@@ -237,8 +277,12 @@ export function PatientFingerTappingTestSession() {
     setCameraState('idle');
     setTrackingState('idle');
     setCaptureState('idle');
-    setLiveFinger(null);
-    setTracePoints([]);
+    setLiveThumbTip(null);
+    setLiveIndexTip(null);
+    setEstimatedThumbEndpoint(null);
+    setLiveTouchCenter(null);
+    setIsTouchingNow(false);
+    setElapsedCaptureMs(0);
   };
 
   const resetCapture = () => {
@@ -250,7 +294,10 @@ export function PatientFingerTappingTestSession() {
 
   const handleManualProcess = async () => processCapturedFrames([...capturedFramesRef.current]);
 
-  const tracePath = tracePoints.map((p) => `${p.x * 100},${p.y * 100}`).join(' ');
+  const captureProgressPct =
+    captureState === 'capturing' || captureState === 'completed'
+      ? Math.min(100, Math.max(0, (elapsedCaptureMs / MAX_CAPTURE_MS) * 100))
+      : 0;
 
   return (
     <PatientLayout>
@@ -268,6 +315,18 @@ export function PatientFingerTappingTestSession() {
             <p className="text-sm text-text-muted">
               Tap your thumb and index finger repeatedly for about 15 seconds while keeping your full hand visible.
             </p>
+            <div className="rounded-sm border border-border-subtle bg-surface-alt p-2">
+              <div className="flex items-center justify-between text-xs text-text-muted mb-1">
+                <span>Capture progress</span>
+                <span>{(elapsedCaptureMs / 1000).toFixed(1)}s / {(MAX_CAPTURE_MS / 1000).toFixed(0)}s</span>
+              </div>
+              <div className="h-2 w-full rounded-sm bg-surface overflow-hidden">
+                <div
+                  className="h-full bg-brand-blue transition-[width] duration-150"
+                  style={{ width: `${captureProgressPct}%` }}
+                />
+              </div>
+            </div>
             <div className="rounded-sm border border-border-subtle bg-surface-alt p-3 relative">
               <video
                 ref={videoRef}
@@ -283,24 +342,26 @@ export function PatientFingerTappingTestSession() {
                 preserveAspectRatio="none"
                 style={{ transform: 'scaleX(-1)' }}
               >
-                {tracePath && (
-                  <polyline
-                    points={tracePath}
-                    fill="none"
-                    stroke="#22d3ee"
+                {liveThumbTip && estimatedThumbEndpoint && (
+                  <line
+                    x1={liveThumbTip.x * 100}
+                    y1={liveThumbTip.y * 100}
+                    x2={estimatedThumbEndpoint.x * 100}
+                    y2={estimatedThumbEndpoint.y * 100}
+                    stroke="#f59e0b"
                     strokeWidth="0.8"
-                    strokeLinejoin="round"
+                    strokeDasharray="1.4 1.1"
                     strokeLinecap="round"
                   />
                 )}
-                {liveFinger && (
+                {isTouchingNow && liveTouchCenter && (
                   <circle
-                    cx={liveFinger.x * 100}
-                    cy={liveFinger.y * 100}
-                    r="1.4"
-                    fill="#f59e0b"
-                    stroke="#fff"
-                    strokeWidth="0.3"
+                    cx={liveTouchCenter.x * 100}
+                    cy={liveTouchCenter.y * 100}
+                    r="2.8"
+                    fill="rgba(16,185,129,0.2)"
+                    stroke="#10b981"
+                    strokeWidth="0.8"
                   />
                 )}
               </svg>

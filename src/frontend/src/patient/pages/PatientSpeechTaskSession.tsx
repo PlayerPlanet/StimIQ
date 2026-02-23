@@ -2,18 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
+import { uploadSpeechRecordingRaw } from '../../lib/apiClient';
 
 interface SpeechStep {
   id: string;
   title: string;
   instruction: string;
   durationLabel: string;
+  minDurationMs: number;
+  maxDurationMs: number;
   prompt: string;
 }
 
 interface SpeechRecording {
   url: string;
   durationMs: number;
+  storagePath?: string;
 }
 
 const SPEECH_STEPS: SpeechStep[] = [
@@ -22,6 +26,8 @@ const SPEECH_STEPS: SpeechStep[] = [
     title: 'Step 1: Sustained vowel',
     instruction: 'Take a breath and hold "aaa" in one continuous sound.',
     durationLabel: '10 to 15 seconds',
+    minDurationMs: 10000,
+    maxDurationMs: 15000,
     prompt: 'Say: "aaaaaaaaaa..."',
   },
   {
@@ -29,6 +35,8 @@ const SPEECH_STEPS: SpeechStep[] = [
     title: 'Step 2: Standardized sentence',
     instruction: 'Read the fixed sentence clearly at a natural speaking pace.',
     durationLabel: 'About 5 to 10 seconds',
+    minDurationMs: 5000,
+    maxDurationMs: 10000,
     prompt: 'Sentence: "Today is a bright and calm day."',
   },
   {
@@ -36,6 +44,8 @@ const SPEECH_STEPS: SpeechStep[] = [
     title: 'Step 3: Rapid syllable repetition',
     instruction: 'Repeat "pa-ta-ka" as quickly and clearly as possible.',
     durationLabel: '10 seconds',
+    minDurationMs: 10000,
+    maxDurationMs: 10000,
     prompt: 'Say repeatedly: "pa-ta-ka, pa-ta-ka, pa-ta-ka..."',
   },
 ];
@@ -47,12 +57,34 @@ function formatDurationMs(durationMs: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
+function mapStepIdToSpeechType(stepId: string): 'SUSTAINED_VOWEL' | 'STANDARDIZED_SENTENCE' | 'RAPID_SYLLABLE_REPETITION' {
+  if (stepId === 'sustained-vowel') {
+    return 'SUSTAINED_VOWEL';
+  }
+  if (stepId === 'standardized-sentence') {
+    return 'STANDARDIZED_SENTENCE';
+  }
+  return 'RAPID_SYLLABLE_REPETITION';
+}
+
+function generateSessionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
 export function PatientSpeechTaskSession() {
   const navigate = useNavigate();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completedStepIds, setCompletedStepIds] = useState<string[]>([]);
   const [recordings, setRecordings] = useState<Record<string, SpeechRecording>>({});
   const [recordingStepId, setRecordingStepId] = useState<string | null>(null);
+  const [recordingElapsedMs, setRecordingElapsedMs] = useState(0);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [stepValidationMsg, setStepValidationMsg] = useState<string | null>(null);
 
@@ -61,6 +93,8 @@ export function PatientSpeechTaskSession() {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartedAtRef = useRef<number | null>(null);
   const recordingsRef = useRef<Record<string, SpeechRecording>>({});
+  const recordingTimerRef = useRef<number | null>(null);
+  const speechSessionIdRef = useRef<string>(generateSessionId());
 
   const currentStep = SPEECH_STEPS[currentStepIndex];
   const isLastStep = currentStepIndex === SPEECH_STEPS.length - 1;
@@ -78,6 +112,10 @@ export function PatientSpeechTaskSession() {
 
   useEffect(
     () => () => {
+      if (recordingTimerRef.current !== null) {
+        window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
@@ -92,6 +130,10 @@ export function PatientSpeechTaskSession() {
   );
 
   const cleanupRecorderResources = () => {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
@@ -99,6 +141,7 @@ export function PatientSpeechTaskSession() {
     mediaRecorderRef.current = null;
     audioChunksRef.current = [];
     recordingStartedAtRef.current = null;
+    setRecordingElapsedMs(0);
   };
 
   const handleStartRecording = async () => {
@@ -115,13 +158,27 @@ export function PatientSpeechTaskSession() {
     setStepValidationMsg(null);
 
     try {
+      const activeStepId = currentStep.id;
+      const activeStepType = mapStepIdToSpeechType(activeStepId);
+      const activeStepMaxDurationMs = currentStep.maxDurationMs;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       mediaStreamRef.current = stream;
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
       recordingStartedAtRef.current = Date.now();
-      setRecordingStepId(currentStep.id);
+      setRecordingElapsedMs(0);
+      setRecordingStepId(activeStepId);
+      recordingTimerRef.current = window.setInterval(() => {
+        if (recordingStartedAtRef.current === null) {
+          return;
+        }
+        const elapsedMs = Math.max(0, Date.now() - recordingStartedAtRef.current);
+        setRecordingElapsedMs(elapsedMs);
+        if (elapsedMs >= activeStepMaxDurationMs && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 100);
 
       recorder.ondataavailable = (event: BlobEvent) => {
         if (event.data.size > 0) {
@@ -139,18 +196,51 @@ export function PatientSpeechTaskSession() {
         const url = URL.createObjectURL(blob);
 
         setRecordings((prev) => {
-          const existingRecording = prev[currentStep.id];
+          const existingRecording = prev[activeStepId];
           if (existingRecording) {
             URL.revokeObjectURL(existingRecording.url);
           }
           return {
             ...prev,
-            [currentStep.id]: {
+            [activeStepId]: {
               url,
               durationMs,
             },
           };
         });
+
+        const extension = mimeType.includes('wav')
+          ? 'wav'
+          : mimeType.includes('mpeg')
+            ? 'mp3'
+            : mimeType.includes('mp4')
+              ? 'mp4'
+              : 'webm';
+        const uploadFile = new File([blob], `${activeStepId}.${extension}`, { type: mimeType });
+        void uploadSpeechRecordingRaw({
+          file: uploadFile,
+          stepType: activeStepType,
+          sessionId: speechSessionIdRef.current,
+          durationMs,
+        })
+          .then((uploaded) => {
+            setRecordings((prev) => {
+              const existing = prev[activeStepId];
+              if (!existing) {
+                return prev;
+              }
+              return {
+                ...prev,
+                [activeStepId]: {
+                  ...existing,
+                  storagePath: uploaded.storage_path,
+                },
+              };
+            });
+          })
+          .catch(() => {
+            setRecordingError('Audio saved locally, but upload to server failed.');
+          });
 
         setRecordingStepId(null);
         cleanupRecorderResources();
@@ -204,6 +294,17 @@ export function PatientSpeechTaskSession() {
   };
 
   const isTaskComplete = totalCompleted === SPEECH_STEPS.length;
+  const recordingMaxMs = currentStep.maxDurationMs;
+  const recordingMinMs = currentStep.minDurationMs;
+  const recordingProgressPct = Math.min(
+    100,
+    Math.max(0, (recordingElapsedMs / recordingMaxMs) * 100)
+  );
+  const isWithinAcceptedRange = recordingElapsedMs >= recordingMinMs && recordingElapsedMs <= recordingMaxMs;
+  const acceptedRangeLabel =
+    recordingMinMs === recordingMaxMs
+      ? `${(recordingMinMs / 1000).toFixed(0)}s`
+      : `${(recordingMinMs / 1000).toFixed(0)}-${(recordingMaxMs / 1000).toFixed(0)}s`;
 
   return (
     <PatientLayout>
@@ -230,6 +331,23 @@ export function PatientSpeechTaskSession() {
 
             <div className="rounded-sm border border-border-subtle p-4 space-y-3">
               <h3 className="text-sm font-semibold text-text-main">Voice recording</h3>
+              <div className="rounded-sm border border-border-subtle bg-surface-alt p-2">
+                <div className="flex items-center justify-between text-xs text-text-muted mb-1">
+                  <span>Recording progress</span>
+                  <span>
+                    {(recordingElapsedMs / 1000).toFixed(1)}s / {(recordingMaxMs / 1000).toFixed(0)}s
+                  </span>
+                </div>
+                <div className="text-xs text-green-700 mb-1">
+                  Accepted range: {acceptedRangeLabel}
+                </div>
+                <div className="h-2 w-full rounded-sm bg-surface overflow-hidden">
+                  <div
+                    className={`h-full transition-[width] duration-100 ${isWithinAcceptedRange ? 'bg-green-600' : 'bg-brand-blue'}`}
+                    style={{ width: `${recordingProgressPct}%` }}
+                  />
+                </div>
+              </div>
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -257,6 +375,9 @@ export function PatientSpeechTaskSession() {
                 <div className="space-y-2">
                   <p className="text-sm text-text-muted">
                     Recorded length: {formatDurationMs(recordings[currentStep.id].durationMs)}
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    Storage: {recordings[currentStep.id].storagePath ?? 'Uploading...'}
                   </p>
                   <audio controls src={recordings[currentStep.id].url} className="w-full">
                     <track kind="captions" />

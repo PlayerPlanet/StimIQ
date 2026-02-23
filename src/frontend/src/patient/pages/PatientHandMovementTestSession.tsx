@@ -19,6 +19,20 @@ function distance(a: HandTrackingPoint, b: HandTrackingPoint): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+function normalizeInferredHand(label: string | undefined): 'LEFT' | 'RIGHT' | 'UNKNOWN' {
+  if (!label) {
+    return 'UNKNOWN';
+  }
+  const upper = label.toUpperCase();
+  if (upper === 'LEFT') {
+    return 'LEFT';
+  }
+  if (upper === 'RIGHT') {
+    return 'RIGHT';
+  }
+  return 'UNKNOWN';
+}
+
 const P1: HandTrackingPoint = { x: 0.2, y: 0.75 };
 const P2: HandTrackingPoint = { x: 0.8, y: 0.75 };
 const START_RADIUS = 0.05;
@@ -147,6 +161,8 @@ export function PatientHandMovementTestSession() {
         const result = handLandmarker.detectForVideo(video, now);
         const wristLandmark = result.landmarks?.[0]?.[0];
         const handednessScore = result.handednesses?.[0]?.[0]?.score;
+        const handednessLabel = result.handednesses?.[0]?.[0]?.categoryName;
+        const inferredHand = normalizeInferredHand(handednessLabel);
 
         const frame: HandTrackingWristFrameInput = {
           t_ms: tMs,
@@ -157,6 +173,7 @@ export function PatientHandMovementTestSession() {
               }
             : null,
           conf: typeof handednessScore === 'number' ? clamp01(handednessScore) : wristLandmark ? 1 : 0,
+          inferred_hand: inferredHand,
         };
 
         if (frame.wrist_raw) {
@@ -191,6 +208,7 @@ export function PatientHandMovementTestSession() {
             t_ms: elapsedMs,
             wrist_raw: frame.wrist_raw,
             conf: frame.conf,
+            inferred_hand: frame.inferred_hand,
           };
           capturedFramesRef.current.push(captureFrame);
 

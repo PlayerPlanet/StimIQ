@@ -19,6 +19,8 @@ import type {
   FingerTapSessionProcessRequest,
   FingerTapSessionProcessResponse,
   FingerTapSessionResult,
+  SpeechStepType,
+  SpeechRecordingUploadResponse,
 } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -305,6 +307,36 @@ export async function getFingerTapSessionResult(
     throw new Error(`Get session result failed (HTTP ${response.status})`);
   }
 
+  return response.json();
+}
+
+/**
+ * Upload raw speech audio and create metadata row.
+ * POST /api/v1/speech/recordings/upload
+ */
+export async function uploadSpeechRecordingRaw(data: {
+  file: File;
+  stepType: SpeechStepType;
+  sessionId?: string | null;
+  patientId?: string | null;
+  durationMs?: number | null;
+  transcript?: string | null;
+}): Promise<SpeechRecordingUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', data.file);
+  formData.append('step_type', data.stepType);
+  if (data.sessionId) formData.append('session_id', data.sessionId);
+  if (data.patientId) formData.append('patient_id', data.patientId);
+  if (typeof data.durationMs === 'number') formData.append('duration_ms', String(data.durationMs));
+  if (data.transcript) formData.append('transcript', data.transcript);
+
+  const response = await apiFetch(`${API_BASE_URL}/v1/speech/recordings/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(`Speech upload failed (HTTP ${response.status})`);
+  }
   return response.json();
 }
 

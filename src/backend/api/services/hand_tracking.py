@@ -12,6 +12,7 @@ from hand_tracking.schemas import (
     WristFrameInput,
 )
 from hand_tracking.service import compute_finger_tap_result, compute_line_follow_result
+from .patient_identity import ensure_patient_exists
 
 
 def _utc_now_iso() -> str:
@@ -47,7 +48,7 @@ def create_line_follow_session(payload: LineFollowRequest) -> UUID:
 
     row = {
         "id": str(session_id),
-        "patient_id": str(payload.patient_id) if payload.patient_id is not None else None,
+        "patient_id": ensure_patient_exists(payload.patient_id, source="hand_tracking"),
         "status": "created",
         "request_payload": payload.model_dump(mode="json"),
         "created_at": now,
@@ -128,7 +129,7 @@ def create_finger_tap_session(payload: FingerTapRequest) -> UUID:
 
     row = {
         "id": str(session_id),
-        "patient_id": str(payload.patient_id) if payload.patient_id is not None else None,
+        "patient_id": ensure_patient_exists(payload.patient_id, source="hand_tracking"),
         "status": "created",
         "request_payload": payload.model_dump(mode="json"),
         "created_at": now,
