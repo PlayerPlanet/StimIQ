@@ -9,6 +9,11 @@ class CreatePatientRequest(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=100)
     date_of_birth: Optional[date] = None
     notes: Optional[str] = Field(default=None, max_length=2000)
+    treatment_w_motor: Optional[float] = None
+    treatment_w_non_motor: Optional[float] = None
+    treatment_w_duration: Optional[float] = None
+    treatment_non_motor_diary_ratio: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    treatment_goals_notes: Optional[str] = Field(default=None, max_length=2000)
 
 
 class PatientResponse(BaseModel):

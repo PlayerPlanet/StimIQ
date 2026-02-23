@@ -124,31 +124,91 @@ def make_windows(x: np.ndarray, window: int, stride: int) -> np.ndarray:
     return np.stack(chunks, axis=0).astype(np.float32)
 
 
-def build_severity_proxy(
-    label: int,
+def compute_motor_raw_from_movement(movement: np.ndarray) -> float:
+    """Compute a simple IMU-derived motor severity raw signal from movement tensor."""
+    if movement.ndim != 2:
+        raise ValueError(f"Expected movement matrix (C, T), got {movement.shape}")
+    return float(np.sqrt(np.mean(np.square(movement), dtype=np.float64)))
+
+
+def compute_severity_components(
+    movement: np.ndarray,
     questionnaire: np.ndarray,
     age: float | None,
     age_at_diagnosis: float | None,
+    motor_mu: float,
+    motor_sigma: float,
     duration_mu: float,
     duration_sigma: float,
-    w_diag: float,
-    w_nms: float,
-    w_dur: float,
-) -> float:
-    diag = {-1: -1.0, 0: -1.0, 1: 1.0, 2: 0.0}.get(label, 0.0)
-    nms_burden = float(np.mean(questionnaire > 0.5))  # [0,1]
-    nms = 2.0 * nms_burden - 1.0  # [-1,1]
+    non_motor_diary_ratio: float,
+) -> dict[str, float]:
+    """Compute individual severity components without weighting.
+    
+    Returns:
+        dict with keys 'motor', 'non_motor', 'duration' each approximately in [-1, 1]
+    """
+    # Motor component from IMU-derived movement severity.
+    motor_raw = compute_motor_raw_from_movement(movement)
+    if motor_sigma > 1e-6:
+        motor = (motor_raw - motor_mu) / motor_sigma
+    else:
+        motor = motor_raw - motor_mu
+    motor = float(np.tanh(motor))
 
-    dur = 0.0
+    # Non-motor component from diary + standard-tests split on questionnaire halves.
+    q = np.asarray(questionnaire, dtype=np.float32).reshape(-1)
+    split_idx = max(1, q.shape[0] // 2)
+    diary_q = q[:split_idx]
+    tests_q = q[split_idx:]
+    diary_burden = float(np.mean(diary_q > 0.5)) if diary_q.size > 0 else 0.5
+    tests_burden = float(np.mean(tests_q > 0.5)) if tests_q.size > 0 else diary_burden
+    r = float(np.clip(non_motor_diary_ratio, 0.0, 1.0))
+    non_motor_burden = r * diary_burden + (1.0 - r) * tests_burden
+    non_motor = float(2.0 * non_motor_burden - 1.0)
+    
+    # Disease duration component.
+    duration = 0.0
     if age is not None and age_at_diagnosis is not None:
         raw = max(0.0, age - age_at_diagnosis)
         if duration_sigma > 1e-6:
-            dur = (raw - duration_mu) / duration_sigma
-    # squash duration to [-1,1]
-    dur = float(np.tanh(dur))
+            duration = (raw - duration_mu) / duration_sigma
+    duration = float(np.tanh(duration))
+    
+    return {"motor": motor, "non_motor": non_motor, "duration": duration}
 
-    total_w = max(1e-6, w_diag + w_nms + w_dur)
-    z = (w_diag * diag + w_nms * nms + w_dur * dur) / total_w
+
+def build_severity_proxy(
+    movement: np.ndarray,
+    questionnaire: np.ndarray,
+    age: float | None,
+    age_at_diagnosis: float | None,
+    motor_mu: float,
+    motor_sigma: float,
+    duration_mu: float,
+    duration_sigma: float,
+    w_motor: float,
+    w_non_motor: float,
+    w_duration: float,
+    non_motor_diary_ratio: float,
+) -> float:
+    """Build weighted severity proxy from components."""
+    components = compute_severity_components(
+        movement=movement,
+        questionnaire=questionnaire,
+        age=age,
+        age_at_diagnosis=age_at_diagnosis,
+        motor_mu=motor_mu,
+        motor_sigma=motor_sigma,
+        duration_mu=duration_mu,
+        duration_sigma=duration_sigma,
+        non_motor_diary_ratio=non_motor_diary_ratio,
+    )
+    
+    total_w = max(1e-6, w_motor + w_non_motor + w_duration)
+    z = (w_motor * components["motor"] + 
+         w_non_motor * components["non_motor"] + 
+         w_duration * components["duration"]) / total_w
+    
     return float(np.clip(z, -1.0, 1.0))
 
 
@@ -166,9 +226,10 @@ def parse_args() -> argparse.Namespace:
         default=",".join(TASKS),
         help="Comma-separated subset of tasks",
     )
-    p.add_argument("--w-diag", type=float, default=0.55)
-    p.add_argument("--w-nms", type=float, default=0.35)
-    p.add_argument("--w-dur", type=float, default=0.10)
+    p.add_argument("--w-motor", type=float, default=0.55)
+    p.add_argument("--w-non-motor", type=float, default=0.35)
+    p.add_argument("--w-duration", type=float, default=0.10)
+    p.add_argument("--non-motor-diary-ratio", type=float, default=0.5)
     p.add_argument("--save-subject-id", action="store_true", help="Also store subject_ids for each window in NPZ.")
     return p.parse_args()
 
@@ -191,9 +252,26 @@ def main() -> None:
 
     # Fit duration normalization from available values.
     durations = []
+    motor_raw_values = []
     for s in subjects:
+        mov_path = movement_dir / f"{s.subject_id}_ml.bin"
+        if mov_path.exists():
+            try:
+                movement = load_movement(mov_path)
+                motor_raw_values.append(compute_motor_raw_from_movement(movement))
+            except Exception:
+                pass
         if s.age is not None and s.age_at_diagnosis is not None:
             durations.append(max(0.0, s.age - s.age_at_diagnosis))
+
+    if motor_raw_values:
+        m = np.asarray(motor_raw_values, dtype=np.float32)
+        motor_mu = float(np.mean(m))
+        motor_sigma = float(np.std(m))
+    else:
+        motor_mu = 0.0
+        motor_sigma = 1.0
+
     if durations:
         d = np.asarray(durations, dtype=np.float32)
         duration_mu = float(np.mean(d))
@@ -217,15 +295,18 @@ def main() -> None:
         movement = load_movement(mov_path)
         questionnaire = load_questionnaire(q_path)
         z = build_severity_proxy(
-            label=s.label,
+            movement=movement,
             questionnaire=questionnaire,
             age=s.age,
             age_at_diagnosis=s.age_at_diagnosis,
+            motor_mu=motor_mu,
+            motor_sigma=motor_sigma,
             duration_mu=duration_mu,
             duration_sigma=duration_sigma,
-            w_diag=args.w_diag,
-            w_nms=args.w_nms,
-            w_dur=args.w_dur,
+            w_motor=args.w_motor,
+            w_non_motor=args.w_non_motor,
+            w_duration=args.w_duration,
+            non_motor_diary_ratio=args.non_motor_diary_ratio,
         )
 
         for task in task_list:

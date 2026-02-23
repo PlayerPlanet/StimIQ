@@ -55,6 +55,7 @@ class PatientParams:
     brain: dict[str, float] = field(default_factory=dict)
     periphery: dict[str, float] = field(default_factory=dict)
     sensor: dict[str, float] = field(default_factory=dict)
+    treatment_goals: Any = None  # Optional TreatmentGoals
 
 
 @dataclass(frozen=True)

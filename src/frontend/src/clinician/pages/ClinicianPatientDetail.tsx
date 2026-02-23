@@ -7,6 +7,7 @@ import { IMUUploadModal } from '../components/IMUUploadModal';
 import { PatientDetailView } from '../components/PatientDetailView';
 import { DbsStateSection } from '../components/DbsStateSection';
 import { DbsTuningSection } from '../components/DbsTuningSection';
+import { TreatmentGoalsSection } from '../components/TreatmentGoalsSection';
 import { getPatientDetail } from '../../lib/apiClient';
 
 /**
@@ -97,6 +98,9 @@ export function ClinicianPatientDetail() {
 
         {/* DBS Tuning Section */}
         <DbsTuningSection patientId={patient.id} />
+
+        {/* Treatment Goals Section */}
+        <TreatmentGoalsSection patientId={patient.id} />
 
         {showIMUModal && (
           <IMUUploadModal

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -16,6 +17,10 @@ WINDOW_SIZE = 256
 WINDOW_STRIDE = 128
 ROLLOUT_DURATION_S = 300.0  # 5 minutes
 BASELINE_CACHE_PATH_DEFAULT = Path(__file__).resolve().parents[1] / "artifacts" / "baseline_rms_cache.json"
+DEFAULT_WEIGHT_MOTOR = 0.33
+DEFAULT_WEIGHT_NON_MOTOR = 0.33
+DEFAULT_WEIGHT_DURATION = 0.34
+DEFAULT_NON_MOTOR_DIARY_RATIO = 0.5
 
 
 def _ensure_sim_importable() -> None:
@@ -217,8 +222,227 @@ def _acc_rms(simulated: Any) -> float:
     return float(np.sqrt(np.mean(simulated.acc ** 2, dtype=np.float64)))
 
 
-def calculate_loss(parameters: Any, backend: str | None = None, patient_id: str | None = None) -> float:
+def _clip01(x: float) -> float:
+    return float(np.clip(x, 0.0, 1.0))
+
+
+def _extract_goal_value(goals: Any, new_key: str, legacy_key: str, default: float) -> float:
+    if goals is None:
+        return default
+    if isinstance(goals, dict):
+        value = goals.get(new_key, goals.get(legacy_key, default))
+    else:
+        value = getattr(goals, new_key, getattr(goals, legacy_key, default))
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _extract_non_motor_diary_ratio(goals: Any, default: float = DEFAULT_NON_MOTOR_DIARY_RATIO) -> float:
+    if goals is None:
+        return default
+    if isinstance(goals, dict):
+        value = goals.get("non_motor_diary_ratio", default)
+    else:
+        value = getattr(goals, "non_motor_diary_ratio", default)
+    try:
+        return _clip01(float(value))
+    except Exception:
+        return default
+
+
+def _normalize_weights(w_motor: float, w_non_motor: float, w_duration: float) -> tuple[float, float, float]:
+    total = max(1e-9, w_motor + w_non_motor + w_duration)
+    return w_motor / total, w_non_motor / total, w_duration / total
+
+
+def _extract_standard_test_severity(payload: dict[str, Any] | None) -> float | None:
+    if not payload or not isinstance(payload, dict):
+        return None
+    metrics = payload.get("metrics")
+    if not isinstance(metrics, dict):
+        return None
+
+    values: list[float] = []
+
+    def add_high_worse(key: str, scale: float) -> None:
+        val = metrics.get(key)
+        if isinstance(val, (int, float)) and scale > 0:
+            values.append(_clip01(float(val) / scale))
+
+    def add_low_worse(key: str, healthy: float) -> None:
+        val = metrics.get(key)
+        if isinstance(val, (int, float)) and healthy > 0:
+            values.append(_clip01((healthy - float(val)) / healthy))
+
+    add_high_worse("D_end", 0.3)
+    add_high_worse("mean_perp_dev", 0.15)
+    add_high_worse("max_perp_dev", 0.25)
+    add_high_worse("jerk_rms", 2.0)
+    add_high_worse("cv_iti", 1.0)
+    add_high_worse("cv_amp", 1.0)
+    add_high_worse("pause_count", 5.0)
+    add_high_worse("max_gap_s", 2.0)
+    add_low_worse("cadence_hz", 4.0)
+
+    straightness = metrics.get("straightness_ratio")
+    if isinstance(straightness, (int, float)):
+        values.append(_clip01((1.0 - float(straightness)) / 0.5))
+
+    slope = metrics.get("decrement_amp_slope")
+    if isinstance(slope, (int, float)):
+        values.append(_clip01(abs(min(0.0, float(slope))) / 0.5))
+
+    if not values:
+        return None
+    return float(np.mean(np.asarray(values, dtype=np.float64)))
+
+
+def _fetch_patient_context(patient_id: str) -> dict[str, Any] | None:
+    try:
+        from database import get_supabase
+        from config import get_settings
+    except Exception:
+        return None
+
+    try:
+        supabase = get_supabase()
+        settings = get_settings()
+    except Exception:
+        return None
+
+    out: dict[str, Any] = {}
+    try:
+        patient_resp = (
+            supabase.table("patients")
+            .select(
+                "id, diagnosis_date, treatment_w_motor, treatment_w_non_motor, treatment_w_duration, treatment_non_motor_diary_ratio"
+            )
+            .eq("id", patient_id)
+            .limit(1)
+            .execute()
+        )
+        if patient_resp.data:
+            out["patient"] = patient_resp.data[0]
+    except Exception:
+        pass
+
+    try:
+        prom_resp = (
+            supabase.table("prom_tests")
+            .select("test_date,q1,q2,q3,q4,q5,q6,q7,q8,q9,q10")
+            .eq("patient_id", patient_id)
+            .order("test_date", desc=False)
+            .execute()
+        )
+        out["prom"] = prom_resp.data or []
+    except Exception:
+        out["prom"] = []
+
+    try:
+        sessions_table = settings.supabase_hand_tracking_sessions_table
+        results_table = settings.supabase_hand_tracking_results_table
+        first_session = (
+            supabase.table(sessions_table)
+            .select("id")
+            .eq("patient_id", patient_id)
+            .order("created_at", desc=False)
+            .limit(1)
+            .execute()
+        )
+        last_session = (
+            supabase.table(sessions_table)
+            .select("id")
+            .eq("patient_id", patient_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        ids: list[str] = []
+        if first_session.data:
+            ids.append(str(first_session.data[0].get("id")))
+        if last_session.data:
+            sid = str(last_session.data[0].get("id"))
+            if sid not in ids:
+                ids.append(sid)
+        test_scores: dict[str, float] = {}
+        for sid in ids:
+            result_resp = (
+                supabase.table(results_table)
+                .select("result_payload")
+                .eq("session_id", sid)
+                .limit(1)
+                .execute()
+            )
+            if result_resp.data:
+                payload = result_resp.data[0].get("result_payload")
+                sev = _extract_standard_test_severity(payload if isinstance(payload, dict) else None)
+                if sev is not None:
+                    test_scores[sid] = sev
+        out["test_scores"] = test_scores
+        out["first_session_id"] = ids[0] if ids else None
+        out["last_session_id"] = ids[-1] if ids else None
+    except Exception:
+        out["test_scores"] = {}
+        out["first_session_id"] = None
+        out["last_session_id"] = None
+
+    return out
+
+
+def _prom_row_to_score(row: dict[str, Any]) -> float:
+    vals: list[float] = []
+    for k in ("q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "q9", "q10"):
+        v = row.get(k)
+        if isinstance(v, (int, float)):
+            vals.append(_clip01((float(v) - 1.0) / 6.0))
+    if not vals:
+        return 0.0
+    return float(np.mean(np.asarray(vals, dtype=np.float64)))
+
+
+def _duration_component_from_patient_row(patient_row: dict[str, Any] | None) -> float:
+    if not patient_row:
+        return 0.0
+    diagnosis_date_raw = patient_row.get("diagnosis_date")
+    if not diagnosis_date_raw:
+        return 0.0
+    try:
+        diagnosis_date = datetime.fromisoformat(str(diagnosis_date_raw).replace("Z", "+00:00"))
+        if diagnosis_date.tzinfo is None:
+            diagnosis_date = diagnosis_date.replace(tzinfo=timezone.utc)
+        years = max(0.0, (datetime.now(timezone.utc) - diagnosis_date).days / 365.25)
+        return float(np.tanh(years / 10.0))
+    except Exception:
+        return 0.0
+
+
+def calculate_loss(
+    parameters: Any, 
+    backend: str | None = None, 
+    patient_id: str | None = None,
+    treatment_goals: Any = None,
+) -> float:
     """Compute a scalar loss for the given stimulation parameter matrix.
+
+    Parameters
+    ----------
+    parameters
+        Stimulation parameter matrix (4, N)
+    backend
+        Loss backend: 'analytical', 'cnn', 'xgboost'
+    patient_id
+        Patient identifier for baseline caching
+    treatment_goals
+        Optional TreatmentGoals to customize severity weighting.
+        Currently used as metadata; future extensions may use it to
+        reweight component predictions or customize loss calculation.
+
+    Returns
+    -------
+    float
+        Loss value in [-1, 1] range
 
     Backends
     --------
@@ -251,6 +475,16 @@ def calculate_loss(parameters: Any, backend: str | None = None, patient_id: str 
     seed = int(cfg.seed)
     rng = np.random.default_rng(seed)
     patient = sample_patient_params(rng, n=1)[0]
+    
+    # Attach treatment goals if provided
+    if treatment_goals is not None:
+        from sim.api.types import PatientParams
+        patient = PatientParams(
+            brain=patient.brain,
+            periphery=patient.periphery,
+            sensor=patient.sensor,
+            treatment_goals=treatment_goals,
+        )
 
     loss_backend = _resolve_loss_backend(backend=backend)
 
@@ -332,4 +566,66 @@ def calculate_loss(parameters: Any, backend: str | None = None, patient_id: str 
         with torch.inference_mode():
             pred = model(x).detach().cpu().numpy().reshape(-1)
 
-    return float(np.mean(pred, dtype=np.float64))
+    motor_component = float(np.clip(np.mean(pred, dtype=np.float64), -1.0, 1.0))
+
+    # Keep legacy behavior when no patient context or explicit goals are provided.
+    if treatment_goals is None and not patient_id:
+        return motor_component
+
+    patient_context = _fetch_patient_context(patient_id) if patient_id else None
+    patient_row = patient_context.get("patient") if patient_context else None
+
+    # Resolve weights from explicit goals first, then patient row, then defaults.
+    w_motor = _extract_goal_value(
+        treatment_goals,
+        new_key="w_motor",
+        legacy_key="w_diag",
+        default=float(patient_row.get("treatment_w_motor", DEFAULT_WEIGHT_MOTOR)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_MOTOR,
+    )
+    w_non_motor = _extract_goal_value(
+        treatment_goals,
+        new_key="w_non_motor",
+        legacy_key="w_nms",
+        default=float(patient_row.get("treatment_w_non_motor", DEFAULT_WEIGHT_NON_MOTOR)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_NON_MOTOR,
+    )
+    w_duration = _extract_goal_value(
+        treatment_goals,
+        new_key="w_duration",
+        legacy_key="w_dur",
+        default=float(patient_row.get("treatment_w_duration", DEFAULT_WEIGHT_DURATION)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_DURATION,
+    )
+    diary_ratio_default = (
+        float(patient_row.get("treatment_non_motor_diary_ratio", DEFAULT_NON_MOTOR_DIARY_RATIO))
+        if isinstance(patient_row, dict)
+        else DEFAULT_NON_MOTOR_DIARY_RATIO
+    )
+    diary_ratio = _extract_non_motor_diary_ratio(treatment_goals, default=diary_ratio_default)
+    w_motor, w_non_motor, w_duration = _normalize_weights(w_motor, w_non_motor, w_duration)
+
+    non_motor_component = 0.0
+    if patient_context:
+        prom_rows = patient_context.get("prom", [])
+        diary_delta = 0.0
+        if isinstance(prom_rows, list) and len(prom_rows) >= 2:
+            first_prom = _prom_row_to_score(prom_rows[0])
+            last_prom = _prom_row_to_score(prom_rows[-1])
+            diary_delta = max(0.0, last_prom - first_prom)
+
+        test_scores = patient_context.get("test_scores", {})
+        first_sid = patient_context.get("first_session_id")
+        last_sid = patient_context.get("last_session_id")
+        standard_delta = 0.0
+        if isinstance(test_scores, dict) and first_sid and last_sid and first_sid in test_scores and last_sid in test_scores:
+            standard_delta = max(0.0, float(test_scores[last_sid]) - float(test_scores[first_sid]))
+
+        non_motor_01 = diary_ratio * diary_delta + (1.0 - diary_ratio) * standard_delta
+        non_motor_component = float(np.clip(2.0 * non_motor_01 - 1.0, -1.0, 1.0))
+
+    duration_component = _duration_component_from_patient_row(patient_row if isinstance(patient_row, dict) else None)
+
+    composed = (
+        w_motor * motor_component
+        + w_non_motor * non_motor_component
+        + w_duration * duration_component
+    )
+    return float(np.clip(composed, -1.0, 1.0))

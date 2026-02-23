@@ -36,6 +36,11 @@ export interface CreatePatientRequest {
   last_name: string;
   date_of_birth?: string | null;
   notes?: string | null;
+  treatment_w_motor?: number | null;
+  treatment_w_non_motor?: number | null;
+  treatment_w_duration?: number | null;
+  treatment_non_motor_diary_ratio?: number | null;
+  treatment_goals_notes?: string | null;
 }
 
 export interface IMUUploadResponse {
@@ -261,3 +266,61 @@ export interface SpeechRecordingUploadResponse {
   duration_ms: number | null;
   transcript: string | null;
 }
+
+// Treatment Goals
+export interface TreatmentGoals {
+  id?: string;
+  patient_id: string;
+  w_motor: number | null;
+  w_non_motor: number | null;
+  w_duration: number | null;
+  non_motor_diary_ratio: number | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TreatmentGoalsRequest {
+  w_motor: number;
+  w_non_motor: number;
+  w_duration: number;
+  non_motor_diary_ratio: number;
+  notes?: string | null;
+}
+
+export interface TreatmentGoalsPreset {
+  name: string;
+  description: string;
+  w_motor: number;
+  w_non_motor: number;
+  w_duration: number;
+  non_motor_diary_ratio: number;
+}
+
+// Predefined treatment goal presets
+export const TREATMENT_GOAL_PRESETS: TreatmentGoalsPreset[] = [
+  {
+    name: 'default',
+    description: 'Balanced approach to all severity components',
+    w_motor: 0.33,
+    w_non_motor: 0.33,
+    w_duration: 0.34,
+    non_motor_diary_ratio: 0.5,
+  },
+  {
+    name: 'motor_focused',
+    description: 'Prioritize motor symptoms',
+    w_motor: 0.55,
+    w_non_motor: 0.35,
+    w_duration: 0.10,
+    non_motor_diary_ratio: 0.5,
+  },
+  {
+    name: 'quality_of_life_focused',
+    description: 'Prioritize non-motor symptoms',
+    w_motor: 0.20,
+    w_non_motor: 0.70,
+    w_duration: 0.10,
+    non_motor_diary_ratio: 0.65,
+  },
+];

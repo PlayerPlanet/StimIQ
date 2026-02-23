@@ -14,6 +14,7 @@ from api import (
     clinician_router,
     hand_tracking_router,
     speech_router,
+    treatment_goals_router,
 )
 
 
@@ -55,6 +56,7 @@ app.include_router(prom_router, prefix="/api", dependencies=[Depends(require_ses
 app.include_router(clinician_router, prefix="/api", dependencies=[Depends(require_session)])
 app.include_router(hand_tracking_router, prefix="/api", dependencies=[Depends(require_session)])
 app.include_router(speech_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(treatment_goals_router, prefix="/api", dependencies=[Depends(require_session)])
 
 
 @app.get("/")

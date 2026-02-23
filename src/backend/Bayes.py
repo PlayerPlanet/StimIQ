@@ -114,13 +114,43 @@ def model(
 	min_distance_frac: float = 0.05,
 	cfg: Optional[Any] = None,
 	patient_id: Optional[str] = None,
+	treatment_goals: Optional[Any] = None,
 ) -> Dict[str, Any]:
 	"""Fetch last `n` datapoints and propose next parameters.
 
-	Returns a dict with keys:
-	- `next_params`: dict mapping parameter name -> suggested value
-	- `model`: the fitted GaussianProcessRegressor (in case caller wants it)
-	- `bounds`: inferred bounds used for search
+	Parameters
+	----------
+	data_path : Optional[str]
+		Path to CSV file containing stimulation records
+	n : int
+		Number of most recent datapoints to use
+	severity_col : str
+		Column name for severity/loss values
+	param_columns : Optional[Sequence[str]]
+		Parameter column names; auto-detected if None
+	n_candidates : int
+		Number of random candidates to evaluate
+	random_state : int
+		Random seed for reproducibility
+	batch_size : int
+		Number of diverse suggestions to return
+	exploration_weight : float
+		Weight for exploration vs exploitation
+	min_distance_frac : float
+		Minimum distance between suggestions (diversity filter)
+	cfg : Optional[Any]
+		Configuration object (e.g., from Hydra)
+	patient_id : Optional[str]
+		Patient identifier
+	treatment_goals : Optional[TreatmentGoals]
+		Patient-specific severity weighting preferences
+
+	Returns
+	-------
+	dict
+		- `next_params`: dict mapping parameter name -> suggested value
+		- `model`: the fitted GaussianProcessRegressor
+		- `bounds`: inferred bounds used for search
 	"""
 	# apply config overrides if provided (DictConfig or mapping)
 	csv_path = None
@@ -296,7 +326,11 @@ def model(
 				raise ValueError(f"Expected row length multiple of 4, got {row.size}")
 			n_elec = row.size // 4
 			param_matrix = row.reshape(n_elec, 4).T
-			loss_val = calculate_loss(param_matrix, patient_id=patient_id)
+			loss_val = calculate_loss(
+				param_matrix, 
+				patient_id=patient_id,
+				treatment_goals=treatment_goals,
+			)
 			y_list.append(float(loss_val))
 		y = np.asarray(y_list, dtype=float)
 

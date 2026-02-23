@@ -40,6 +40,17 @@ async def create_patient(patient: CreatePatientRequest):
         "date_of_birth": patient.date_of_birth.isoformat() if patient.date_of_birth else None,
         "notes": patient.notes,
     }
+
+    if patient.treatment_w_motor is not None:
+        patient_data["treatment_w_motor"] = float(patient.treatment_w_motor)
+    if patient.treatment_w_non_motor is not None:
+        patient_data["treatment_w_non_motor"] = float(patient.treatment_w_non_motor)
+    if patient.treatment_w_duration is not None:
+        patient_data["treatment_w_duration"] = float(patient.treatment_w_duration)
+    if patient.treatment_non_motor_diary_ratio is not None:
+        patient_data["treatment_non_motor_diary_ratio"] = float(patient.treatment_non_motor_diary_ratio)
+    if patient.treatment_goals_notes is not None:
+        patient_data["treatment_goals_notes"] = patient.treatment_goals_notes
     
     try:
         response = supabase.table("patients").insert(patient_data).execute()
