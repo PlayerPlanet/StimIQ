@@ -272,9 +272,9 @@ export function ClinicianSimulationLab() {
                       />
                       <Legend />
                       <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="4 4" />
-                      <Line type="monotone" dataKey="ch1" name="Channel 1" stroke="#1d4ed8" dot={false} strokeWidth={2} />
-                      <Line type="monotone" dataKey="ch2" name="Channel 2" stroke="#0f766e" dot={false} strokeWidth={2} />
-                      <Line type="monotone" dataKey="ch3" name="Channel 3" stroke="#b45309" dot={false} strokeWidth={2} />
+                      <Line type="monotone" dataKey="ch1" name="x pos" stroke="#1d4ed8" dot={false} strokeWidth={2} />
+                      <Line type="monotone" dataKey="ch2" name="y pos" stroke="#0f766e" dot={false} strokeWidth={2} />
+                      <Line type="monotone" dataKey="ch3" name="z pos" stroke="#b45309" dot={false} strokeWidth={2} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -286,7 +286,7 @@ export function ClinicianSimulationLab() {
                 </div>
               )}
               <p className="text-xs text-text-muted mt-2">
-                Output shows synthetic channel deviations around baseline 0 (timeseries preview before WebGL).
+                Output shows synthetic position deviations around baseline 0 (timeseries preview before WebGL).
               </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
@@ -318,7 +318,7 @@ export function ClinicianSimulationLab() {
 
               <div className="mt-3 pt-3 border-t border-border-subtle grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
                 <div>
-                  <h3 className="text-xs font-semibold text-text-main mb-2">Severity Over Optimization Steps</h3>
+                  <h3 className="text-xs font-semibold text-text-main mb-2">Loss (severity) Over Optimization Steps</h3>
                   {severityHistory.length > 0 ? (
                     <div className="h-[150px] border border-border-subtle rounded-sm bg-surface-alt p-2">
                       <ResponsiveContainer width="100%" height="100%">
