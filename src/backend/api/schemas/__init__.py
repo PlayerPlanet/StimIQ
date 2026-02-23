@@ -13,6 +13,18 @@ from .simulation import (
     OptimizationStepResponse,
 )
 from .agent import AgentPromptRequest, AgentPromptResponse
+from .hand_tracking import (
+    Point2D,
+    WristFrameInput,
+    LineFollowRequest,
+    CreateSessionResponse,
+    ProcessSessionRequest,
+    ProcessSessionResponse,
+    WristFrameResult,
+    LineFollowQuality,
+    LineFollowMetrics,
+    LineFollowResult,
+)
 
 __all__ = [
     "CreatePatientRequest",
@@ -35,4 +47,14 @@ __all__ = [
     "OptimizationStepResponse",
     "AgentPromptRequest",
     "AgentPromptResponse",
+    "Point2D",
+    "WristFrameInput",
+    "LineFollowRequest",
+    "CreateSessionResponse",
+    "ProcessSessionRequest",
+    "ProcessSessionResponse",
+    "WristFrameResult",
+    "LineFollowQuality",
+    "LineFollowMetrics",
+    "LineFollowResult",
 ]

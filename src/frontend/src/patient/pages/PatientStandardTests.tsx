@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
 import { Modal } from '../../components/common/Modal';
@@ -78,6 +79,7 @@ const STANDARD_TESTS: TestCardConfig[] = [
 ];
 
 export function PatientStandardTests() {
+  const navigate = useNavigate();
   const [activeTest, setActiveTest] = useState<TestCardConfig | null>(null);
   const [promptText, setPromptText] = useState('');
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
@@ -244,6 +246,24 @@ export function PatientStandardTests() {
               <h3 className="text-sm font-semibold text-text-main">What does the future look like?</h3>
               <p className="text-sm text-text-muted mt-1">{activeTest.futureStory}</p>
             </div>
+            {(activeTest.key === 'hand-movement' || activeTest.key === 'finger-tapping') && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTest(null);
+                    navigate(
+                      activeTest.key === 'hand-movement'
+                        ? '/patient/standard-tests/hand-movement/start'
+                        : '/patient/standard-tests/finger-tapping/start'
+                    );
+                  }}
+                  className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy"
+                >
+                  Start test now
+                </button>
+              </div>
+            )}
           </div>
         )}
       </Modal>
