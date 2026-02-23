@@ -19,8 +19,8 @@ function distance(a: HandTrackingPoint, b: HandTrackingPoint): number {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-const P1: HandTrackingPoint = { x: 0.2, y: 0.5 };
-const P2: HandTrackingPoint = { x: 0.8, y: 0.5 };
+const P1: HandTrackingPoint = { x: 0.2, y: 0.75 };
+const P2: HandTrackingPoint = { x: 0.8, y: 0.75 };
 const START_RADIUS = 0.05;
 const END_RADIUS = 0.05;
 const COMPLETE_STREAK_FRAMES = 3;

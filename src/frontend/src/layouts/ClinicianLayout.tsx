@@ -13,6 +13,7 @@ export function ClinicianLayout({ children }: ClinicianLayoutProps) {
   const sidebarLinks = [
     { label: 'Patients', path: '/clinician' },
     { label: 'Simulation Lab', path: '/clinician/simulation' },
+    { label: 'Hand Tracking', path: '/clinician/hand-tracking' },
   ];
 
   return (
