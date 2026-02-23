@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
 import { PatientPromForm } from '../components/PatientPromForm';
+import { getOrCreateVisitorPatientId } from '../utils/visitorIdentity';
 
 export function PatientDailyReport() {
-  const demoPatientId = 'b63028e5-22c8-4f12-804e-988ab3f30226';
+  const visitorPatientId = getOrCreateVisitorPatientId();
   const [isCompleted, setIsCompleted] = useState(false);
 
   return (
@@ -26,12 +27,22 @@ export function PatientDailyReport() {
               </p>
             </Card>
           ) : (
-            <PatientPromForm
-              patientId={demoPatientId}
-              onCompleted={() => {
-                setIsCompleted(true);
-              }}
-            />
+            <>
+              <Card className="p-4 space-y-1">
+                <p className="text-sm font-semibold text-text-main">Data collection note</p>
+                <p className="text-xs text-text-muted">
+                  We use a generated visitor patient ID to link your daily reports and test results on
+                  this device.
+                </p>
+                <p className="text-xs text-text-muted">Visitor ID: {visitorPatientId}</p>
+              </Card>
+              <PatientPromForm
+                patientId={visitorPatientId}
+                onCompleted={() => {
+                  setIsCompleted(true);
+                }}
+              />
+            </>
           )}
         </div>
       </div>

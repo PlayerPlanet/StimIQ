@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
 import { createLineFollowSession } from '../../lib/apiClient';
+import { getOrCreateVisitorPatientId } from '../utils/visitorIdentity';
 
 export function PatientHandMovementTestStart() {
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const visitorPatientId = getOrCreateVisitorPatientId();
 
   const handleBeginTest = async () => {
     setIsStarting(true);
@@ -16,7 +18,7 @@ export function PatientHandMovementTestStart() {
       const response = await createLineFollowSession({
         test_type: 'LINE_FOLLOW',
         protocol_version: 'v1',
-        patient_id: null,
+        patient_id: visitorPatientId,
         p1: { x: 0.2, y: 0.75 },
         p2: { x: 0.8, y: 0.75 },
         end_radius: 0.05,
@@ -49,6 +51,14 @@ export function PatientHandMovementTestStart() {
             <p className="text-sm text-text-muted">
               Place your phone in a stable position and keep your hand visible to the camera.
             </p>
+            <div className="rounded-sm border border-border-subtle bg-surface-alt p-3 space-y-1">
+              <p className="text-sm font-semibold text-text-main">Data collection note</p>
+              <p className="text-xs text-text-muted">
+                We generate a visitor patient ID and attach it to this test so your results can be
+                saved across visits on this device.
+              </p>
+              <p className="text-xs text-text-muted">Visitor ID: {visitorPatientId}</p>
+            </div>
             <button
               type="button"
               onClick={() => void handleBeginTest()}

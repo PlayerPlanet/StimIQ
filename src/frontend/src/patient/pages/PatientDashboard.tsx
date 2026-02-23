@@ -79,6 +79,26 @@ export function PatientDashboard() {
             </div>
           </Card>
 
+          <Card
+            hover
+            onClick={() => navigate('/patient/standard-tests/speech-task/start')}
+            className="p-6 cursor-pointer"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="text-left md:text-left">
+                <h2 className="text-xl font-semibold text-text-main">Standardized speech task</h2>
+                <p className="text-text-muted text-sm">
+                  Complete a 3-step speech recording in under a minute.
+                </p>
+              </div>
+              <div className="flex justify-center md:justify-end">
+                <span className="px-3 py-1 rounded-full border text-sm font-semibold bg-blue-100 text-blue-800 border-blue-200">
+                  Start now
+                </span>
+              </div>
+            </div>
+          </Card>
+
           <Card className="p-6 text-left">
             <p className="text-sm text-text-muted font-semibold">Next checkup</p>
             <p className="text-lg text-text-main font-medium">Mar 12, 2026 at 10:30 AM</p>

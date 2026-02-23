@@ -5,6 +5,8 @@ import { PatientHandMovementTestSession } from '../patient/pages/PatientHandMove
 import { PatientFingerTappingTestStart } from '../patient/pages/PatientFingerTappingTestStart';
 import { PatientFingerTappingTestSession } from '../patient/pages/PatientFingerTappingTestSession';
 import { PatientDailyReport } from '../patient/pages/PatientDailyReport';
+import { PatientSpeechTaskStart } from '../patient/pages/PatientSpeechTaskStart';
+import { PatientSpeechTaskSession } from '../patient/pages/PatientSpeechTaskSession';
 
 /**
  * Patient view routes
@@ -34,6 +36,14 @@ export const patientRoutes = [
   {
     path: '/standard-tests/finger-tapping/session',
     element: <PatientFingerTappingTestSession />,
+  },
+  {
+    path: '/standard-tests/speech-task/start',
+    element: <PatientSpeechTaskStart />,
+  },
+  {
+    path: '/standard-tests/speech-task/session',
+    element: <PatientSpeechTaskSession />,
   },
   {
     path: '/daily-report',

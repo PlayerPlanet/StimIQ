@@ -192,17 +192,21 @@ export function PatientStandardTests() {
               <h3 className="text-sm font-semibold text-text-main">What does the future look like?</h3>
               <p className="text-sm text-text-muted mt-1">{activeTest.futureStory}</p>
             </div>
-            {(activeTest.key === 'hand-movement' || activeTest.key === 'finger-tapping') && (
+            {(activeTest.key === 'hand-movement' ||
+              activeTest.key === 'finger-tapping' ||
+              activeTest.key === 'speech-task') && (
               <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveTest(null);
-                    navigate(
+                    const destination =
                       activeTest.key === 'hand-movement'
                         ? '/patient/standard-tests/hand-movement/start'
-                        : '/patient/standard-tests/finger-tapping/start'
-                    );
+                        : activeTest.key === 'finger-tapping'
+                          ? '/patient/standard-tests/finger-tapping/start'
+                          : '/patient/standard-tests/speech-task/start';
+                    navigate(destination);
                   }}
                   className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy"
                 >
