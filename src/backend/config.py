@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_service_role_key: str
     supabase_imu_bucket: str = "imu-data"
+    supabase_imu_table: str = "imu_data"
     supabase_datapoints_bucket: str = "datapoints"
     supabase_stimuli_table: str = "stimuli"
     supabase_hand_tracking_sessions_table: str = "hand_tracking_line_follow_sessions"

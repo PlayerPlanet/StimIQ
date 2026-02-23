@@ -1,5 +1,5 @@
 from .patient import CreatePatientRequest, PatientResponse, PatientDetailResponse
-from .imu import IMUUploadResponse
+from .imu import IMUUploadResponse, IMUSampleIn, IMUBatchIn, IMUBatchResponse
 from .dbs_state import ChannelState, DailyTremorPoint, DailyPromPoint, DbsState
 from .dbs_tuning import ChannelRecommendation, DbsTuningRecommendation
 from .simulation import (
@@ -45,6 +45,9 @@ __all__ = [
     "PatientResponse",
     "PatientDetailResponse",
     "IMUUploadResponse",
+    "IMUSampleIn",
+    "IMUBatchIn",
+    "IMUBatchResponse",
     "ChannelState",
     "DailyTremorPoint",
     "DailyPromPoint",

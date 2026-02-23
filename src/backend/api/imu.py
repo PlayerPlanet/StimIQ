@@ -1,15 +1,19 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+import logging
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 
 from config import get_settings
 from database import get_supabase
-from .schemas import IMUUploadResponse
+from .schemas import IMUUploadResponse, IMUBatchIn, IMUBatchResponse
+from .services.imu import insert_imu_batch
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/patients", tags=["imu"])
+batch_router = APIRouter(prefix="/patient", tags=["imu"])
 
 
 def format_date_for_filename(dt: datetime) -> str:
@@ -79,3 +83,42 @@ async def upload_imu_file(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload file to storage: {str(e)}")
+
+
+@batch_router.post("/imu-batch", response_model=IMUBatchResponse, status_code=201)
+async def upload_imu_batch(batch: IMUBatchIn):
+    """
+    Upload a batch of IMU (accelerometer) samples.
+    
+    This is a demo endpoint for accelerometer data collection.
+    Patient ID is provided in the request body.
+    """
+    try:
+        # Validate non-empty samples
+        if not batch.samples:
+            raise HTTPException(status_code=400, detail="Samples list cannot be empty")
+        
+        # Insert the batch into Supabase
+        inserted_count = insert_imu_batch(
+            patient_id=batch.patient_id,
+            device_id=batch.device_id,
+            session_id=batch.session_id,
+            samples=batch.samples,
+            meta=batch.meta
+        )
+        
+        logger.info(
+            f"Successfully uploaded IMU batch: {inserted_count} samples, "
+            f"session={batch.session_id}, patient={batch.patient_id}"
+        )
+        
+        return IMUBatchResponse(inserted=inserted_count, session_id=batch.session_id)
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        logger.error(f"Runtime error in IMU batch upload: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to insert IMU data")
+    except Exception as e:
+        logger.error(f"Unexpected error in IMU batch upload: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

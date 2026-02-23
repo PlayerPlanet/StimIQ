@@ -21,4 +21,6 @@ npm run build
 - `/clinician` - Patient selection list
 - `/clinician/patient/:id` - Single patient detail
 - `/clinician/parameters/:id` - DBS model parameters
+- `/patient/imu-tracking` - IMU-data from the browser on any device
+
 

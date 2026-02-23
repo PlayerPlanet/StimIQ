@@ -261,3 +261,27 @@ export interface SpeechRecordingUploadResponse {
   duration_ms: number | null;
   transcript: string | null;
 }
+
+// IMU / Accelerometer Types
+export interface IMUSample {
+  timestamp: number;
+  ax: number;
+  ay: number;
+  az: number;
+}
+
+export interface IMUBatchPayload {
+  patient_id: string;
+  device_id: string;
+  session_id: string;
+  samples: IMUSample[];
+  meta?: {
+    user_agent?: string;
+    sampling_hz?: number;
+  };
+}
+
+export interface IMUBatchResponse {
+  inserted: number;
+  session_id: string;
+}
