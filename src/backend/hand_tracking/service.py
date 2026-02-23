@@ -6,6 +6,11 @@ from math import sqrt
 from uuid import UUID, uuid4
 
 from .schemas import (
+    FingerTapFrameResult,
+    FingerTapMetrics,
+    FingerTapQuality,
+    FingerTapRequest,
+    FingerTapResult,
     LineFollowMetrics,
     LineFollowQuality,
     LineFollowRequest,
@@ -34,6 +39,80 @@ def _dot(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 def _norm(a: tuple[float, float]) -> float:
     return sqrt(a[0] ** 2 + a[1] ** 2)
+
+
+def _slope(x: list[float], y: list[float]) -> float:
+    if len(x) != len(y) or len(x) < 2:
+        return 0.0
+    mx = sum(x) / len(x)
+    my = sum(y) / len(y)
+    vx = sum((xi - mx) ** 2 for xi in x)
+    if vx < 1e-12:
+        return 0.0
+    cxy = sum((x[i] - mx) * (y[i] - my) for i in range(len(x)))
+    return cxy / vx
+
+
+def _ema_smooth(values: list[float | None], alpha: float) -> list[float | None]:
+    out: list[float | None] = []
+    prev: float | None = None
+    for v in values:
+        if v is None:
+            out.append(None)
+            continue
+        prev = v if prev is None else alpha * v + (1.0 - alpha) * prev
+        out.append(prev)
+    return out
+
+
+def _estimate_fs_hz(timestamps_s: list[float], fs_hint: float | None = None) -> float:
+    if fs_hint is not None and fs_hint > 0:
+        return fs_hint
+    dt = [timestamps_s[i] - timestamps_s[i - 1] for i in range(1, len(timestamps_s))]
+    dt = [x for x in dt if x > 1e-3]
+    if not dt:
+        return 30.0
+    return 1.0 / (sum(dt) / len(dt))
+
+
+def _find_tap_minima(
+    d_s: list[float | None],
+    t_s: list[float],
+    fs: float,
+    min_interval_s: float = 0.12,
+    window_s: float = 0.25,
+    prom_thresh: float = 0.07,
+) -> list[int]:
+    n = len(d_s)
+    if n < 3:
+        return []
+
+    window = max(1, int(window_s * fs))
+    last_t = -1e9
+    minima: list[int] = []
+
+    for k in range(1, n - 1):
+        if d_s[k] is None or d_s[k - 1] is None or d_s[k + 1] is None:
+            continue
+        if not (d_s[k] <= d_s[k - 1] and d_s[k] < d_s[k + 1]):
+            continue
+
+        tk = t_s[k]
+        if (tk - last_t) < min_interval_s:
+            continue
+
+        left = [v for v in d_s[max(0, k - window):k] if v is not None]
+        right = [v for v in d_s[k + 1:min(n, k + window + 1)] if v is not None]
+        if not left or not right:
+            continue
+        prominence = min(max(left), max(right)) - d_s[k]
+        if prominence < prom_thresh:
+            continue
+
+        minima.append(k)
+        last_t = tk
+
+    return minima
 
 
 def _closest_dev(
@@ -186,6 +265,135 @@ def compute_line_follow_result(session_id: UUID, request: LineFollowRequest) -> 
         session_id=session_id,
         tracking_version="line-follow-landmark0-ema-v1",
         frames=frame_results,
+        quality=quality,
+        metrics=metrics,
+        artifacts={},
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+def compute_finger_tap_result(session_id: UUID, request: FingerTapRequest) -> FingerTapResult:
+    sorted_frames = sorted(request.frames, key=lambda f: f.t_ms)
+    timestamps_s = [f.t_ms / 1000.0 for f in sorted_frames]
+    total = len(sorted_frames)
+
+    d_norm_raw: list[float | None] = []
+    conf_values: list[float] = []
+    visible_count = 0
+
+    for frame in sorted_frames:
+        has_points = (
+            frame.thumb_tip is not None
+            and frame.index_tip is not None
+            and frame.wrist is not None
+            and frame.middle_mcp is not None
+        )
+        conf = frame.conf if frame.conf is not None else (1.0 if has_points else 0.0)
+        conf_values.append(conf)
+
+        if not has_points:
+            d_norm_raw.append(None)
+            continue
+
+        visible_count += 1
+        thumb = frame.thumb_tip
+        index = frame.index_tip
+        wrist = frame.wrist
+        middle_mcp = frame.middle_mcp
+        assert thumb is not None and index is not None and wrist is not None and middle_mcp is not None
+
+        d_raw = _distance(thumb, index)
+        scale = _distance(wrist, middle_mcp)
+        d_norm_raw.append(d_raw / max(scale, 1e-6))
+
+    d_norm_smooth = _ema_smooth(d_norm_raw, alpha=0.3)
+    fs = _estimate_fs_hz(timestamps_s)
+    tap_indices = _find_tap_minima(d_norm_smooth, timestamps_s, fs=fs)
+    tap_times_s = [timestamps_s[k] for k in tap_indices]
+
+    visible_fraction = (visible_count / total) if total > 0 else 0.0
+    redo_recommended = False
+    redo_instructions: list[str] = []
+    if visible_fraction < 0.7:
+        redo_recommended = True
+        redo_instructions.append("Keep your full hand visible to the camera during the full test.")
+    if len(tap_indices) < 5:
+        redo_recommended = True
+        redo_instructions.append("Tap faster and complete more repetitions for reliable scoring.")
+    if not redo_instructions:
+        redo_instructions.append("Tracking quality is acceptable.")
+
+    cadence_hz: float | None = None
+    cv_iti: float | None = None
+    mean_amp: float | None = None
+    cv_amp: float | None = None
+    decrement_amp_slope: float | None = None
+    pause_count: int | None = None
+    max_gap_s: float | None = None
+
+    if len(tap_times_s) >= 3:
+        itis = [tap_times_s[i] - tap_times_s[i - 1] for i in range(1, len(tap_times_s))]
+        mean_iti = sum(itis) / len(itis)
+        var_iti = sum((x - mean_iti) ** 2 for x in itis) / len(itis)
+        std_iti = sqrt(var_iti)
+        cadence_hz = (1.0 / mean_iti) if mean_iti > 1e-6 else 0.0
+        cv_iti = (std_iti / mean_iti) if mean_iti > 1e-6 else 0.0
+
+        window = max(1, int(0.25 * fs))
+        amps: list[float] = []
+        amp_times: list[float] = []
+        for tap_idx in tap_indices:
+            left = [v for v in d_norm_smooth[max(0, tap_idx - window):tap_idx] if v is not None]
+            right = [v for v in d_norm_smooth[tap_idx + 1:min(len(d_norm_smooth), tap_idx + window + 1)] if v is not None]
+            center = d_norm_smooth[tap_idx]
+            if not left or not right or center is None:
+                continue
+            amps.append(min(max(left), max(right)) - center)
+            amp_times.append(timestamps_s[tap_idx])
+
+        if amps:
+            mean_amp = sum(amps) / len(amps)
+            var_amp = sum((a - mean_amp) ** 2 for a in amps) / len(amps)
+            std_amp = sqrt(var_amp)
+            cv_amp = (std_amp / mean_amp) if mean_amp > 1e-6 else 0.0
+            decrement_amp_slope = _slope(amp_times, amps) if len(amps) >= 3 else 0.0
+
+        pause_count = sum(1 for x in itis if x > 0.5)
+        max_gap_s = max(itis) if itis else 0.0
+
+    frame_results: list[FingerTapFrameResult] = []
+    for i, frame in enumerate(sorted_frames):
+        frame_results.append(
+            FingerTapFrameResult(
+                t_ms=frame.t_ms,
+                conf=conf_values[i],
+                d_norm_raw=d_norm_raw[i],
+                d_norm_smooth=d_norm_smooth[i],
+            )
+        )
+
+    metrics = FingerTapMetrics(
+        tap_count=len(tap_indices),
+        cadence_hz=cadence_hz,
+        cv_iti=cv_iti,
+        mean_amp=mean_amp,
+        cv_amp=cv_amp,
+        decrement_amp_slope=decrement_amp_slope,
+        pause_count=pause_count,
+        max_gap_s=max_gap_s,
+    )
+    quality = FingerTapQuality(
+        visible_fraction=visible_fraction,
+        redo_recommended=redo_recommended,
+        redo_instructions=redo_instructions,
+    )
+
+    return FingerTapResult(
+        session_id=session_id,
+        tracking_version="finger-tap-landmarks-ema-v1",
+        frames=frame_results,
+        tap_indices=tap_indices,
+        tap_times_s=tap_times_s,
         quality=quality,
         metrics=metrics,
         artifacts={},

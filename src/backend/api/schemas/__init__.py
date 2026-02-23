@@ -24,6 +24,13 @@ from .hand_tracking import (
     LineFollowQuality,
     LineFollowMetrics,
     LineFollowResult,
+    FingerTapFrameInput,
+    FingerTapRequest,
+    ProcessFingerTapSessionRequest,
+    FingerTapFrameResult,
+    FingerTapQuality,
+    FingerTapMetrics,
+    FingerTapResult,
 )
 
 __all__ = [
@@ -57,4 +64,11 @@ __all__ = [
     "LineFollowQuality",
     "LineFollowMetrics",
     "LineFollowResult",
+    "FingerTapFrameInput",
+    "FingerTapRequest",
+    "ProcessFingerTapSessionRequest",
+    "FingerTapFrameResult",
+    "FingerTapQuality",
+    "FingerTapMetrics",
+    "FingerTapResult",
 ]

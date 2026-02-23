@@ -14,6 +14,11 @@ import type {
   LineFollowSessionProcessRequest,
   LineFollowSessionProcessResponse,
   LineFollowSessionResult,
+  FingerTapSessionCreateRequest,
+  FingerTapSessionCreateResponse,
+  FingerTapSessionProcessRequest,
+  FingerTapSessionProcessResponse,
+  FingerTapSessionResult,
 } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -219,6 +224,63 @@ export async function getLineFollowSessionResult(
   sessionId: string
 ): Promise<LineFollowSessionResult> {
   const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions/${sessionId}/result`);
+
+  if (!response.ok) {
+    throw new Error(`Get session result failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Create hand tracking finger-tap session.
+ * POST /api/v1/hand_tracking/finger_tap/sessions
+ */
+export async function createFingerTapSession(
+  data: FingerTapSessionCreateRequest
+): Promise<FingerTapSessionCreateResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Create session failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Process hand tracking finger-tap session.
+ * POST /api/v1/hand_tracking/finger_tap/sessions/{sessionId}/process
+ */
+export async function processFingerTapSession(
+  sessionId: string,
+  data: FingerTapSessionProcessRequest
+): Promise<FingerTapSessionProcessResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions/${sessionId}/process`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Process session failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get hand tracking finger-tap session result.
+ * GET /api/v1/hand_tracking/finger_tap/sessions/{sessionId}/result
+ */
+export async function getFingerTapSessionResult(
+  sessionId: string
+): Promise<FingerTapSessionResult> {
+  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions/${sessionId}/result`);
 
   if (!response.ok) {
     throw new Error(`Get session result failed (HTTP ${response.status})`);

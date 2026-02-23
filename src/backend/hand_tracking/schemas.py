@@ -90,3 +90,65 @@ class LineFollowResult(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FingerTapFrameInput(BaseModel):
+    t_ms: int = Field(..., ge=0)
+    thumb_tip: Point2D | None = None
+    index_tip: Point2D | None = None
+    wrist: Point2D | None = None
+    middle_mcp: Point2D | None = None
+    conf: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class FingerTapRequest(BaseModel):
+    test_type: Literal["FINGER_TAP"] = "FINGER_TAP"
+    protocol_version: Literal["v1"] = "v1"
+    patient_id: UUID | None = None
+    max_duration_ms: int = Field(default=15000, gt=0, le=120000)
+    video_ref: str | None = None
+    handedness_expected: str | None = None
+    camera_orientation: str | None = None
+    frames: list[FingerTapFrameInput] = Field(default_factory=list)
+
+
+class ProcessFingerTapSessionRequest(BaseModel):
+    frames: list[FingerTapFrameInput] = Field(default_factory=list)
+
+
+class FingerTapFrameResult(BaseModel):
+    t_ms: int
+    conf: float = Field(..., ge=0.0, le=1.0)
+    d_norm_raw: float | None = None
+    d_norm_smooth: float | None = None
+
+
+class FingerTapQuality(BaseModel):
+    visible_fraction: float = Field(..., ge=0.0, le=1.0)
+    redo_recommended: bool
+    redo_instructions: list[str] = Field(default_factory=list)
+
+
+class FingerTapMetrics(BaseModel):
+    tap_count: int = Field(default=0, ge=0)
+    cadence_hz: float | None = None
+    cv_iti: float | None = None
+    mean_amp: float | None = None
+    cv_amp: float | None = None
+    decrement_amp_slope: float | None = None
+    pause_count: int | None = None
+    max_gap_s: float | None = None
+
+
+class FingerTapResult(BaseModel):
+    session_id: UUID
+    tracking_version: str = "finger-tap-landmark-v1"
+    frames: list[FingerTapFrameResult]
+    tap_indices: list[int] = Field(default_factory=list)
+    tap_times_s: list[float] = Field(default_factory=list)
+    quality: FingerTapQuality
+    metrics: FingerTapMetrics
+    artifacts: dict[str, str] = Field(default_factory=dict)
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

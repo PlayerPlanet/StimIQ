@@ -1,9 +1,32 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
+import { createFingerTapSession } from '../../lib/apiClient';
 
 export function PatientFingerTappingTestStart() {
   const navigate = useNavigate();
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  const handleBeginTest = async () => {
+    setIsStarting(true);
+    setStartError(null);
+    try {
+      const response = await createFingerTapSession({
+        test_type: 'FINGER_TAP',
+        protocol_version: 'v1',
+        patient_id: null,
+        max_duration_ms: 15000,
+        frames: [],
+      });
+      navigate(`/patient/standard-tests/finger-tapping/session?sessionId=${response.session_id}`);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : 'Failed to start finger tapping test.');
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
   return (
     <PatientLayout>
@@ -24,11 +47,15 @@ export function PatientFingerTappingTestStart() {
             </p>
             <button
               type="button"
-              onClick={() => navigate('/patient/standard-tests/finger-tapping/session')}
-              className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy"
+              onClick={() => void handleBeginTest()}
+              disabled={isStarting}
+              className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy disabled:opacity-60"
             >
-              Begin test
+              {isStarting ? 'Starting...' : 'Begin test'}
             </button>
+            {startError && (
+              <p className="text-sm text-amber-700">{startError}</p>
+            )}
           </Card>
         </div>
       </div>

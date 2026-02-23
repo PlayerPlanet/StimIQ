@@ -177,3 +177,68 @@ export interface LineFollowSessionResult {
   artifacts: Record<string, string>;
   created_at: string;
 }
+
+export interface FingerTapFrameInput {
+  t_ms: number;
+  thumb_tip: HandTrackingPoint | null;
+  index_tip: HandTrackingPoint | null;
+  wrist: HandTrackingPoint | null;
+  middle_mcp: HandTrackingPoint | null;
+  conf?: number | null;
+}
+
+export interface FingerTapSessionCreateRequest {
+  test_type: 'FINGER_TAP';
+  protocol_version: 'v1';
+  patient_id?: string | null;
+  max_duration_ms: number;
+  video_ref?: string | null;
+  handedness_expected?: string | null;
+  camera_orientation?: string | null;
+  frames?: FingerTapFrameInput[];
+}
+
+export interface FingerTapSessionCreateResponse {
+  session_id: string;
+  upload_url?: string | null;
+  status: 'created' | 'processed';
+}
+
+export interface FingerTapSessionProcessRequest {
+  frames: FingerTapFrameInput[];
+}
+
+export interface FingerTapSessionProcessResponse {
+  session_id: string;
+  status: 'processed';
+}
+
+export interface FingerTapSessionResult {
+  session_id: string;
+  tracking_version: string;
+  frames: Array<{
+    t_ms: number;
+    conf: number;
+    d_norm_raw: number | null;
+    d_norm_smooth: number | null;
+  }>;
+  tap_indices: number[];
+  tap_times_s: number[];
+  quality: {
+    visible_fraction: number;
+    redo_recommended: boolean;
+    redo_instructions: string[];
+  };
+  metrics: {
+    tap_count: number;
+    cadence_hz: number | null;
+    cv_iti: number | null;
+    mean_amp: number | null;
+    cv_amp: number | null;
+    decrement_amp_slope: number | null;
+    pause_count: number | null;
+    max_gap_s: number | null;
+  };
+  artifacts: Record<string, string>;
+  created_at: string;
+}

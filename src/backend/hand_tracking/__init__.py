@@ -1,16 +1,23 @@
 from .schemas import (
     CreateSessionResponse,
+    FingerTapFrameInput,
+    FingerTapFrameResult,
+    FingerTapMetrics,
+    FingerTapQuality,
+    FingerTapRequest,
+    FingerTapResult,
     LineFollowMetrics,
     LineFollowQuality,
     LineFollowRequest,
     LineFollowResult,
     Point2D,
+    ProcessFingerTapSessionRequest,
     ProcessSessionRequest,
     ProcessSessionResponse,
     WristFrameInput,
     WristFrameResult,
 )
-from .service import compute_line_follow_result
+from .service import compute_finger_tap_result, compute_line_follow_result
 
 __all__ = [
     "Point2D",
@@ -23,5 +30,13 @@ __all__ = [
     "LineFollowQuality",
     "LineFollowMetrics",
     "LineFollowResult",
+    "FingerTapFrameInput",
+    "FingerTapRequest",
+    "ProcessFingerTapSessionRequest",
+    "FingerTapFrameResult",
+    "FingerTapQuality",
+    "FingerTapMetrics",
+    "FingerTapResult",
     "compute_line_follow_result",
+    "compute_finger_tap_result",
 ]
