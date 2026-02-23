@@ -4,6 +4,7 @@ import { PatientHandMovementTestStart } from '../patient/pages/PatientHandMoveme
 import { PatientHandMovementTestSession } from '../patient/pages/PatientHandMovementTestSession';
 import { PatientFingerTappingTestStart } from '../patient/pages/PatientFingerTappingTestStart';
 import { PatientFingerTappingTestSession } from '../patient/pages/PatientFingerTappingTestSession';
+import { PatientDailyReport } from '../patient/pages/PatientDailyReport';
 
 /**
  * Patient view routes
@@ -33,5 +34,9 @@ export const patientRoutes = [
   {
     path: '/standard-tests/finger-tapping/session',
     element: <PatientFingerTappingTestSession />,
+  },
+  {
+    path: '/daily-report',
+    element: <PatientDailyReport />,
   },
 ];

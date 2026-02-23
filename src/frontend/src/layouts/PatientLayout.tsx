@@ -22,6 +22,7 @@ export function PatientLayout({ children }: PatientLayoutProps) {
 
   const sidebarLinks = [
     { label: 'Overview', path: '/patient' },
+    { label: 'Daily report', path: '/patient/daily-report' },
     { label: 'Standard tests', path: '/patient/standard-tests' },
   ];
 
