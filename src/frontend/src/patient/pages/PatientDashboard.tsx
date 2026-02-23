@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
 import { Modal } from '../../components/common/Modal';
@@ -9,6 +10,7 @@ import { sendAgentPrompt } from '../../lib/apiClient';
  * PatientDashboard - patient view showing personal overview and PROM assessments
  */
 export function PatientDashboard() {
+  const navigate = useNavigate();
   const demoPatientId = 'b63028e5-22c8-4f12-804e-988ab3f30226';
   const [isCompleted, setIsCompleted] = useState(false);
   const [showForm, setShowForm] = useState(true);
@@ -69,6 +71,26 @@ export function PatientDashboard() {
               <div className="flex justify-center md:justify-end">
                 <span className={`px-3 py-1 rounded-full border text-sm font-semibold ${statusStyles}`}>
                   {statusLabel}
+                </span>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            hover
+            onClick={() => navigate('/patient/standard-tests/hand-movement/start')}
+            className="p-6 cursor-pointer"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="text-left md:text-left">
+                <h2 className="text-xl font-semibold text-text-main">Hand movement tracking test</h2>
+                <p className="text-text-muted text-sm">
+                  Complete your standardized hand movement video test.
+                </p>
+              </div>
+              <div className="flex justify-center md:justify-end">
+                <span className="px-3 py-1 rounded-full border text-sm font-semibold bg-blue-100 text-blue-800 border-blue-200">
+                  Start now
                 </span>
               </div>
             </div>
