@@ -213,6 +213,7 @@ def compute_line_follow_result(session_id: UUID, request: LineFollowRequest) -> 
     time_to_complete_ms: int | None = None
     completion_streak = 0
     completion_streak_target = 3
+    first_within_end_radius_ms: int | None = None
 
     for i, (t_ms, p) in enumerate(valid_points):
         if i > 0:
@@ -222,6 +223,8 @@ def compute_line_follow_result(session_id: UUID, request: LineFollowRequest) -> 
 
         d_end = _distance(p, request.p2)
         if d_end <= request.end_radius:
+            if first_within_end_radius_ms is None:
+                first_within_end_radius_ms = t_ms
             completion_streak += 1
             if completion_streak >= completion_streak_target and not completed:
                 completed = True
@@ -231,12 +234,27 @@ def compute_line_follow_result(session_id: UUID, request: LineFollowRequest) -> 
 
     if valid_points:
         result_endpoint = next(
-            (p for t, p in valid_points if time_to_complete_ms is not None and t >= time_to_complete_ms),
+            (
+                p
+                for t, p in valid_points
+                if (
+                    time_to_complete_ms is not None
+                    and t >= time_to_complete_ms
+                )
+            ),
             valid_points[-1][1],
         )
         d_end_value = _distance(result_endpoint, request.p2)
     else:
         d_end_value = None
+
+    # Camera captures can end with the wrist inside end radius but without enough
+    # consecutive frames to satisfy streak completion; treat this as completed.
+    if not completed and d_end_value is not None and d_end_value <= request.end_radius:
+        completed = True
+        time_to_complete_ms = first_within_end_radius_ms if first_within_end_radius_ms is not None else (
+            valid_points[-1][0] if valid_points else None
+        )
 
     if path_length <= 0:
         straightness_ratio = 0.0

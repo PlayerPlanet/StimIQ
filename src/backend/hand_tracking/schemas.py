@@ -16,6 +16,7 @@ class WristFrameInput(BaseModel):
     t_ms: int = Field(..., ge=0)
     wrist_raw: Point2D | None = None
     conf: float | None = Field(default=None, ge=0.0, le=1.0)
+    inferred_hand: Literal["LEFT", "RIGHT", "UNKNOWN"] | None = None
 
 
 class LineFollowRequest(BaseModel):
@@ -99,6 +100,7 @@ class FingerTapFrameInput(BaseModel):
     wrist: Point2D | None = None
     middle_mcp: Point2D | None = None
     conf: float | None = Field(default=None, ge=0.0, le=1.0)
+    inferred_hand: Literal["LEFT", "RIGHT", "UNKNOWN"] | None = None
 
 
 class FingerTapRequest(BaseModel):
