@@ -5,17 +5,23 @@ WORKDIR /app
 # Install uv package manager
 RUN pip install --no-cache-dir uv
 
-# Copy dependency files
-COPY pyproject.toml .
+# Keep virtualenv outside /app so docker-compose bind mounts do not hide it.
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
-# Install dependencies
-RUN uv sync
+# Copy dependency files and local package source first for better layer caching.
+# This Dockerfile is intended to be built from repository root context (`.`).
+COPY src/backend/pyproject.toml /app/pyproject.toml
+COPY src/backend/uv.lock /app/uv.lock
+COPY src/sim /sim
+
+# Install dependencies exactly as locked
+RUN uv sync --frozen
 
 # Copy application code
-COPY . .
+COPY src/backend /app
 
-# Expose port
-EXPOSE 8000
+# Expose port (Cloud Run expects PORT, default 8080)
+EXPOSE 8080
 
-# Run FastAPI app
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run FastAPI app using PORT env var (fallback to 8080)
+CMD ["/bin/sh", "-c", "/opt/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]

@@ -8,7 +8,14 @@ Backbone simulation module for stimulation parameters `(4xN)` to synthetic 3D IM
 python main.py
 python -m sim.scripts.sim_one --override rollout.duration_s=5
 python -m sim.scripts.sim_sweep --override sweep.samples=8 --override cohort.patients=8 --override output.local_dir=artifacts/sim
+python -m sim.scripts.sim_opensim_video --override rollout.duration_s=5 --out-dir artifacts/opensim --comparison-mode 3d
 ```
+
+The OpenSim video script exports:
+- OpenSim-compatible motion files (`.mot`) for stimulation ON and OFF.
+- A side-by-side comparison GIF (ON vs OFF), with tremor motion applied to the right hand/wrist.
+- `--comparison-mode 3d` gives a 3D stick-figure view.
+- `--comparison-mode yolo2d` gives the YOLO-like 2D keypoint stick figure.
 
 ## Python API
 

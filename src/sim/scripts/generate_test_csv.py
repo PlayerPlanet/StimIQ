@@ -55,14 +55,14 @@ def main() -> None:
     supabase_cfg = OmegaConf.to_container(cfg.output.supabase, resolve=True)
 
     out_dir = Path(str(cfg.output.local_dir)) / "test_csv"
-    paths = generate_and_save(
-        simulator=simulator,
-        stimuli=stimuli,
-        patients=patients,
-        config=rollout_cfg,
-        out_dir=out_dir,
-        supabase=supabase_cfg,
-        seed=seed,
+        paths = generate_and_save(
+            simulator=simulator,
+            stimuli=stimuli,
+            patients=patients,
+            config=rollout_cfg,
+            out_dir=out_dir,
+            supabase=supabase_cfg,
+            seed=seed,
     )
     print(f"Saved {len(paths)} test CSV files to {out_dir}")
 

@@ -5,6 +5,8 @@ export interface ChannelRecommendation {
   amplitude: number;
   voltage: number;
   frequency: number;
+  pulse_width_s: number;
+  phase_rad: number;
   time_on_hours: number;
 }
 
@@ -15,7 +17,9 @@ export interface DbsTuningRecommendation {
 }
 
 export async function fetchDbsTuning(patientId: string): Promise<DbsTuningRecommendation> {
-  const response = await fetch(`${API_BASE_URL}/clinician/dbs_tuning/${patientId}`);
+  const response = await fetch(`${API_BASE_URL}/clinician/dbs_tuning/${patientId}`, {
+    credentials: 'include',
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch DBS tuning: ${response.statusText}`);
   }

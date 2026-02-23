@@ -46,7 +46,7 @@ async def create_prom_test(prom_test: PromTestCreate):
 
 @router.get("", response_model=list[PromTestResponse])
 async def get_prom_tests(
-    patient_id: str = Query(..., min_length=1),
+    patient_id: str = Query(..., min_length=1, max_length=64),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
 ):

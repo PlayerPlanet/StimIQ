@@ -1,0 +1,47 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - src/backend/Dockerfile
+      - -t
+      - ${_IMAGE_URI}:${COMMIT_SHA}
+      - -t
+      - ${_IMAGE_URI}:latest
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_IMAGE_URI}:${COMMIT_SHA}
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_IMAGE_URI}:latest
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image
+      - ${_IMAGE_URI}:${COMMIT_SHA}
+      - --region
+      - ${_REGION}
+      - --platform
+      - managed
+      - --quiet
+
+images:
+  - ${_IMAGE_URI}:${COMMIT_SHA}
+  - ${_IMAGE_URI}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _IMAGE_URI: europe-west1-docker.pkg.dev/bold-hub-478314-u7/stimiq/backend
+  _SERVICE_NAME: stimiq-backend
+  _REGION: europe-west1

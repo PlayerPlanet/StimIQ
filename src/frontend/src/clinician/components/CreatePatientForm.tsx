@@ -148,14 +148,14 @@ export function CreatePatientForm({ onSubmit, onClose }: CreatePatientFormProps)
         <button
           type="submit"
           disabled={!isFormValid || isSubmitting}
-          className="flex-1 px-6 py-2 bg-brand-blue text-white font-semibold rounded-sm transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-brand-blue text-white font-semibold rounded-sm transition-all duration-75 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
         >
           {isSubmitting ? 'Creating...' : 'Create Patient Profile'}
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="flex-1 px-6 py-2 bg-surface-alt text-text-main font-semibold rounded-sm border border-border-subtle transition-all duration-200 hover:bg-surface"
+          className="flex-1 px-4 py-2 bg-surface-alt text-text-main font-semibold rounded-sm border border-border-subtle transition-all duration-75 hover:bg-surface text-sm"
         >
           Cancel
         </button>

@@ -38,6 +38,7 @@ export async function createPromTest(data: PromTestCreate): Promise<PromTestRead
 
   const response = await fetch(`${API_BASE_URL}/prom_tests`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
@@ -76,7 +77,9 @@ export async function getPromTests(params: {
   if (params.dateFrom) searchParams.append('date_from', params.dateFrom);
   if (params.dateTo) searchParams.append('date_to', params.dateTo);
 
-  const response = await fetch(`${API_BASE_URL}/prom_tests?${searchParams}`);
+  const response = await fetch(`${API_BASE_URL}/prom_tests?${searchParams}`, {
+    credentials: 'include',
+  });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

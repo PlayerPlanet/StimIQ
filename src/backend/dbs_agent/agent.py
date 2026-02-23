@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import json
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -13,11 +14,19 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
 # --- 1. Setup & Initialization ---
-load_dotenv("dbs-agent/agent.env")
+AGENT_DIR = Path(__file__).resolve().parent
+load_dotenv(AGENT_DIR / "agent.env")
+load_dotenv(AGENT_DIR.parent / ".env")
 
-api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+# Prefer GEMINI_API_KEY when both are present. In hosted environments, GOOGLE_API_KEY
+# may refer to a different Google API key that is not authorized for Gemini endpoints.
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 if not api_key:
-    raise RuntimeError("GOOGLE_API_KEY or GEMINI_API_KEY must be set in agent.env")
+    raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY must be set (dbs_agent/agent.env or backend .env)")
+if os.getenv("GEMINI_API_KEY"):
+    print("Using GEMINI_API_KEY for DBS agent.")
+elif os.getenv("GOOGLE_API_KEY"):
+    print("Using GOOGLE_API_KEY for DBS agent.")
 
 # Initialize the LLM
 llm = ChatGoogleGenerativeAI(
@@ -29,26 +38,35 @@ llm = ChatGoogleGenerativeAI(
 
 # --- 2. Vector Database Setup ---
 def setup_vector_db():
-    pdf_path = os.getenv("PDF_PATH", "dbs_guidelines.pdf")
-    index_path = os.getenv("FAISS_INDEX_PATH", "faiss_index") 
+    pdf_path = os.getenv("PDF_PATH", str(AGENT_DIR / "dbs_guidelines.pdf"))
+    index_path = os.getenv("FAISS_INDEX_PATH", str(AGENT_DIR / "faiss_index")) 
     
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/gemini-embedding-001", # Note: models/text-embedding-004 is recommended for newer deployments
-        google_api_key=api_key # type: ignore
-    )
+    try:
+        embeddings = GoogleGenerativeAIEmbeddings(
+            # Use a model compatible with Gemini API key auth.
+            model=os.getenv("EMBEDDING_MODEL", "models/text-embedding-004"),
+            google_api_key=api_key,  # type: ignore
+        )
+    except Exception as e:
+        print(f"Warning: failed to initialize embeddings. Vector DB disabled. Error: {e}")
+        return None
 
-    if os.path.exists(index_path):
-        return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True).as_retriever(search_kwargs={"k": 2})
-    else:
-        print(f"No local index found. Parsing '{pdf_path}'...")
-        if not os.path.exists(pdf_path):
-            print(f"⚠️ Warning: '{pdf_path}' not found. Vector DB disabled.")
-            return None
-        loader = PyPDFLoader(pdf_path)
-        splits = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(loader.load())
-        vectorstore = FAISS.from_documents(splits, embeddings)
-        vectorstore.save_local(index_path)
-        return vectorstore.as_retriever(search_kwargs={"k": 2})
+    try:
+        if os.path.exists(index_path):
+            return FAISS.load_local(index_path, embeddings, allow_dangerous_deserialization=True).as_retriever(search_kwargs={"k": 2})
+        else:
+            print(f"No local index found. Parsing '{pdf_path}'...")
+            if not os.path.exists(pdf_path):
+                print(f"⚠️ Warning: '{pdf_path}' not found. Vector DB disabled.")
+                return None
+            loader = PyPDFLoader(pdf_path)
+            splits = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(loader.load())
+            vectorstore = FAISS.from_documents(splits, embeddings)
+            vectorstore.save_local(index_path)
+            return vectorstore.as_retriever(search_kwargs={"k": 2})
+    except Exception as e:
+        print(f"Warning: failed to build/load vector DB. RAG disabled. Error: {e}")
+        return None
 
 retriever = setup_vector_db()
 
@@ -146,6 +164,40 @@ def interpret_dbs_parameters(current_programming: dict, proposed_programming: di
     return {
         "raw_response": final_raw_output,
         "clean_ui_response": clean_ui_output
+    }
+
+
+def run_clinical_agent_prompt(user_input: str) -> dict:
+    """
+    Run a free-form clinician prompt through the DBS agent and return raw + cleaned text.
+    """
+    system_prompt = """You are a specialized clinical AI assistant for Deep Brain Stimulation (DBS).
+Provide concise, clinically useful answers. Do not diagnose, and clearly label uncertainty.
+Use the search_medical_guidelines_impl tool when guidelines are relevant to the prompt."""
+
+    agent = create_react_agent(llm, tools=[search_medical_guidelines])
+    final_raw_output = ""
+
+    for chunk in agent.stream({"messages": [SystemMessage(content=system_prompt), HumanMessage(content=user_input)]}):
+        if "agent" in chunk:
+            message = chunk["agent"]["messages"][0]
+            text_chunk = ""
+
+            if hasattr(message, "content"):
+                if isinstance(message.content, list):
+                    for item in message.content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            text_chunk += item.get("text", "")
+                elif isinstance(message.content, str):
+                    text_chunk += message.content
+
+            final_raw_output += text_chunk + "\n"
+
+    clean_ui_output = re.sub(r"<scratchpad>.*?</scratchpad>", "", final_raw_output, flags=re.DOTALL).strip()
+
+    return {
+        "raw_response": final_raw_output,
+        "clean_ui_response": clean_ui_output,
     }
 
 # --- 5. Execution Example ---

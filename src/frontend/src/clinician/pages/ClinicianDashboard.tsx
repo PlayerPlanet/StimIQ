@@ -56,12 +56,12 @@ export function ClinicianDashboard() {
 
   return (
     <ClinicianLayout>
-      <div className="px-8 py-6">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-text-main">Patients</h1>
+      <div className="px-4 py-3">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-bold text-text-main">Patients</h1>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-6 py-2 bg-brand-blue text-white font-semibold rounded-lg hover:bg-brand-navy transition-colors"
+            className="px-4 py-2 bg-brand-blue text-white font-semibold rounded-sm hover:bg-brand-navy transition-colors duration-75"
           >
             + New Patient
           </button>
@@ -72,11 +72,11 @@ export function ClinicianDashboard() {
         ) : (
           <div className="space-y-3">
             {patients.length === 0 ? (
-              <Card className="p-6 text-center bg-surface-alt">
-                <p className="text-text-muted">No patients yet.</p>
+              <Card className="p-3 text-center bg-surface-alt">
+                <p className="text-xs text-text-muted">No patients yet.</p>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="mt-3 px-4 py-2 text-brand-blue font-semibold hover:text-brand-navy"
+                  className="mt-2 px-3 py-1 text-xs text-brand-blue font-semibold hover:text-brand-navy"
                 >
                   Create your first patient
                 </button>
@@ -88,21 +88,20 @@ export function ClinicianDashboard() {
                   <Card
                     key={patient.id}
                     onClick={() => handlePatientClick(patient.id)}
-                    className="p-5 cursor-pointer hover:shadow-md hover:bg-surface-alt transition-all"
+                    className="p-3 cursor-pointer hover:border-brand-blue transition-colors duration-75"
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-text-main">
+                        <h3 className="text-sm font-semibold text-text-main">
                           {patient.first_name} {patient.last_name}
                         </h3>
-                        <div className="text-sm text-text-muted mt-1">
+                        <div className="text-xs text-text-muted mt-0.5">
                           {age && <span>Age: {age}</span>}
-                          {patient.notes && <span className="ml-4">{patient.notes}</span>}
                         </div>
                       </div>
-                      <div className="text-brand-blue">
+                      <div className="text-brand-blue flex-shrink-0 ml-2">
                         <svg
-                          className="w-5 h-5"
+                          className="w-4 h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"

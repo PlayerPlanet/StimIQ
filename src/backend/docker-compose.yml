@@ -1,14 +1,22 @@
 services:
   backend:
-    build: .
+    build:
+      context: ../..
+      dockerfile: src/backend/Dockerfile
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
+      - PORT=${PORT:-8080}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - SUPABASE_IMU_BUCKET=${SUPABASE_IMU_BUCKET:-imu-data}
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-false}
+      - SESSION_LOGIN_PASSWORD=${SESSION_LOGIN_PASSWORD:-dev-only-change-me}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
+      - SESSION_TTL_MINUTES=${SESSION_TTL_MINUTES:-480}
+      - IMU_UPLOAD_MAX_BYTES=${IMU_UPLOAD_MAX_BYTES:-5000000}
       - API_HOST=0.0.0.0
-      - API_PORT=8000
+      - API_PORT=${PORT:-8080}
       - API_RELOAD=false
     volumes:
       - .:/app

@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from auth import require_session
 from database import initialize_supabase
 from config import get_settings
 from api import patients_router, imu_router, prom_router, clinician_router, treatment_goals_router
@@ -32,17 +33,28 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
         "http://127.0.0.1:5175",
+        "https://stim-iq.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+<<<<<<< HEAD
 app.include_router(patients_router, prefix="/api")
 app.include_router(imu_router, prefix="/api")
 app.include_router(prom_router, prefix="/api")
 app.include_router(clinician_router, prefix="/api")
 app.include_router(treatment_goals_router, prefix="/api")
+=======
+app.include_router(auth_router, prefix="/api")
+app.include_router(patients_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(imu_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(prom_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(clinician_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(hand_tracking_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(speech_router, prefix="/api", dependencies=[Depends(require_session)])
+>>>>>>> origin/main
 
 
 @app.get("/")

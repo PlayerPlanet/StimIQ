@@ -4,10 +4,19 @@ import numpy as np
 
 from sim.api.base import StimulationEncoder
 from sim.api.types import StimParams
-from sim.stimulation.waveforms import smooth_rectified_sinusoid
+from sim.stimulation.waveforms import square_pulse_train
 
 
 class WaveformEncoder(StimulationEncoder):
+    """Encodes StimParams as a sum/mean of per-channel square pulse trains.
+
+    All four parameter rows are used:
+    - amp           → pulse amplitude
+    - freq          → pulse repetition frequency (Hz)
+    - pw (pulse_width_s) → pulse width (seconds)
+    - phase         → timing offset (radians, shifts pulse onset within period)
+    """
+
     def __init__(self, reduction: str = "sum") -> None:
         if reduction not in {"sum", "mean", "none"}:
             raise ValueError("reduction must be one of: sum, mean, none")
@@ -17,10 +26,11 @@ class WaveformEncoder(StimulationEncoder):
         channels = []
         for i in range(params.n_channels):
             channels.append(
-                smooth_rectified_sinusoid(
+                square_pulse_train(
                     t=t,
                     amp=float(params.amp[i]),
                     freq_hz=float(params.freq[i]),
+                    pulse_width_s=float(params.pw[i]),
                     phase=float(params.phase[i]),
                 )
             )

@@ -11,3 +11,10 @@ src/backend/uv.lock
 *.pyc
 *.pyo
 src/backend/dbs_agent/faiss_index
+.vscode/
+*.png
+*.npz
+removable/
+# Allow committed UI assets for patient standard tests
+!src/frontend/public/assets/standard-tests/
+!src/frontend/public/assets/standard-tests/**
