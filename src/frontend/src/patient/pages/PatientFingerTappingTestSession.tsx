@@ -51,7 +51,6 @@ export function PatientFingerTappingTestSession() {
   const [elapsedCaptureMs, setElapsedCaptureMs] = useState(0);
   const [capturedCount, setCapturedCount] = useState(0);
   const [liveThumbTip, setLiveThumbTip] = useState<HandTrackingPoint | null>(null);
-  const [liveIndexTip, setLiveIndexTip] = useState<HandTrackingPoint | null>(null);
   const [estimatedThumbEndpoint, setEstimatedThumbEndpoint] = useState<HandTrackingPoint | null>(null);
   const [liveTouchCenter, setLiveTouchCenter] = useState<HandTrackingPoint | null>(null);
   const [isTouchingNow, setIsTouchingNow] = useState(false);
@@ -156,12 +155,6 @@ export function PatientFingerTappingTestSession() {
         const thumbTip = landmarks?.[4];
         const indexTip = landmarks?.[8];
 
-        if (indexTip) {
-          const point = { x: clamp01(indexTip.x), y: clamp01(indexTip.y) };
-          setLiveIndexTip(point);
-        } else {
-          setLiveIndexTip(null);
-        }
         setLiveThumbTip(thumbTip ? { x: clamp01(thumbTip.x), y: clamp01(thumbTip.y) } : null);
         setEstimatedThumbEndpoint(
           indexTip
@@ -246,7 +239,6 @@ export function PatientFingerTappingTestSession() {
 
       lastVideoTimeRef.current = -1;
       setLiveThumbTip(null);
-      setLiveIndexTip(null);
       setEstimatedThumbEndpoint(null);
       setLiveTouchCenter(null);
       setIsTouchingNow(false);
@@ -278,7 +270,6 @@ export function PatientFingerTappingTestSession() {
     setTrackingState('idle');
     setCaptureState('idle');
     setLiveThumbTip(null);
-    setLiveIndexTip(null);
     setEstimatedThumbEndpoint(null);
     setLiveTouchCenter(null);
     setIsTouchingNow(false);
