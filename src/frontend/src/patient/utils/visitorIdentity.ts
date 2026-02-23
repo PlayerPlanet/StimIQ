@@ -5,7 +5,11 @@ function generateVisitorPatientId(): string {
     return crypto.randomUUID();
   }
 
-  return `visitor-${Date.now()}-${Math.round(Math.random() * 1_000_000_000)}`;
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
 }
 
 export function getOrCreateVisitorPatientId(): string {
@@ -22,4 +26,3 @@ export function getOrCreateVisitorPatientId(): string {
   window.localStorage.setItem(VISITOR_PATIENT_ID_STORAGE_KEY, generated);
   return generated;
 }
-
