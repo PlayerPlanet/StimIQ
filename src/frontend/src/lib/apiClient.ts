@@ -9,6 +9,11 @@ import type {
   OptimizationStepRequest,
   OptimizationStepResponse,
   AgentPromptResponse,
+  LineFollowSessionCreateRequest,
+  LineFollowSessionCreateResponse,
+  LineFollowSessionProcessRequest,
+  LineFollowSessionProcessResponse,
+  LineFollowSessionResult,
 } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -160,6 +165,63 @@ export async function sendAgentPrompt(prompt: string): Promise<AgentPromptRespon
 
   if (!response.ok) {
     throw new Error(`Agent prompt failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Create hand tracking line-follow session.
+ * POST /api/v1/hand_tracking/line_follow/sessions
+ */
+export async function createLineFollowSession(
+  data: LineFollowSessionCreateRequest
+): Promise<LineFollowSessionCreateResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Create session failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Process hand tracking line-follow session.
+ * POST /api/v1/hand_tracking/line_follow/sessions/{sessionId}/process
+ */
+export async function processLineFollowSession(
+  sessionId: string,
+  data: LineFollowSessionProcessRequest
+): Promise<LineFollowSessionProcessResponse> {
+  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions/${sessionId}/process`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Process session failed (HTTP ${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get hand tracking line-follow session result.
+ * GET /api/v1/hand_tracking/line_follow/sessions/{sessionId}/result
+ */
+export async function getLineFollowSessionResult(
+  sessionId: string
+): Promise<LineFollowSessionResult> {
+  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions/${sessionId}/result`);
+
+  if (!response.ok) {
+    throw new Error(`Get session result failed (HTTP ${response.status})`);
   }
 
   return response.json();

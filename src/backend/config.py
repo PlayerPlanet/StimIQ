@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     supabase_imu_bucket: str = "imu-data"
     supabase_datapoints_bucket: str = "datapoints"
     supabase_stimuli_table: str = "stimuli"
+    supabase_hand_tracking_sessions_table: str = "hand_tracking_line_follow_sessions"
+    supabase_hand_tracking_results_table: str = "hand_tracking_line_follow_results"
     bayes_patient_id: Optional[str] = None
     bayes_datapoints_object_path: Optional[str] = None
     loss_model_backend: str = "cnn"

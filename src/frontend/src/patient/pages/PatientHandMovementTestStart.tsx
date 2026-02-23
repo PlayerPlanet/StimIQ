@@ -1,9 +1,36 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
+import { createLineFollowSession } from '../../lib/apiClient';
 
 export function PatientHandMovementTestStart() {
   const navigate = useNavigate();
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  const handleBeginTest = async () => {
+    setIsStarting(true);
+    setStartError(null);
+    try {
+      const response = await createLineFollowSession({
+        test_type: 'LINE_FOLLOW',
+        protocol_version: 'v1',
+        patient_id: null,
+        p1: { x: 0.2, y: 0.5 },
+        p2: { x: 0.8, y: 0.5 },
+        end_radius: 0.05,
+        corridor_radius: 0.03,
+        max_duration_ms: 15000,
+        frames: [],
+      });
+      navigate(`/patient/standard-tests/hand-movement/session?sessionId=${response.session_id}`);
+    } catch (error) {
+      setStartError(error instanceof Error ? error.message : 'Failed to start hand movement test.');
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
   return (
     <PatientLayout>
@@ -24,11 +51,15 @@ export function PatientHandMovementTestStart() {
             </p>
             <button
               type="button"
-              onClick={() => navigate('/patient/standard-tests/hand-movement/session')}
-              className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy"
+              onClick={() => void handleBeginTest()}
+              disabled={isStarting}
+              className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy disabled:opacity-60"
             >
-              Begin test
+              {isStarting ? 'Starting...' : 'Begin test'}
             </button>
+            {startError && (
+              <p className="text-sm text-amber-700">{startError}</p>
+            )}
           </Card>
         </div>
       </div>

@@ -106,3 +106,74 @@ export interface AgentPromptResponse {
   message: string;
   response_text: string;
 }
+
+export interface HandTrackingPoint {
+  x: number;
+  y: number;
+}
+
+export interface HandTrackingWristFrameInput {
+  t_ms: number;
+  wrist_raw: HandTrackingPoint | null;
+  conf?: number | null;
+}
+
+export interface LineFollowSessionCreateRequest {
+  test_type: 'LINE_FOLLOW';
+  protocol_version: 'v1';
+  patient_id?: string | null;
+  p1: HandTrackingPoint;
+  p2: HandTrackingPoint;
+  end_radius: number;
+  corridor_radius: number;
+  max_duration_ms: number;
+  video_ref?: string | null;
+  handedness_expected?: string | null;
+  camera_orientation?: string | null;
+  frames?: HandTrackingWristFrameInput[];
+}
+
+export interface LineFollowSessionCreateResponse {
+  session_id: string;
+  upload_url?: string | null;
+  status: 'created' | 'processed';
+}
+
+export interface LineFollowSessionProcessRequest {
+  frames: HandTrackingWristFrameInput[];
+}
+
+export interface LineFollowSessionProcessResponse {
+  session_id: string;
+  status: 'processed';
+}
+
+export interface LineFollowSessionResult {
+  session_id: string;
+  tracking_version: string;
+  frames: Array<{
+    t_ms: number;
+    wrist_raw: HandTrackingPoint | null;
+    wrist_smooth: HandTrackingPoint | null;
+    conf: number;
+  }>;
+  quality: {
+    visible_fraction: number;
+    out_of_frame_fraction: number;
+    redo_recommended: boolean;
+    redo_instructions: string[];
+  };
+  metrics: {
+    D_end: number | null;
+    time_to_complete_ms: number | null;
+    completed: boolean;
+    path_length: number;
+    line_length: number;
+    straightness_ratio: number;
+    mean_perp_dev: number;
+    max_perp_dev: number;
+    jerk_rms: number | null;
+  };
+  artifacts: Record<string, string>;
+  created_at: string;
+}
