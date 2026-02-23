@@ -34,6 +34,9 @@ async def upload_imu_file(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error verifying patient: {str(e)}")
     
+    if not file.filename or len(file.filename) > 255:
+        raise HTTPException(status_code=400, detail="Invalid file name")
+
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
@@ -55,6 +58,11 @@ async def upload_imu_file(
     
     try:
         file_content = await file.read()
+        if len(file_content) > settings.imu_upload_max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File is too large. Maximum allowed size is {settings.imu_upload_max_bytes} bytes",
+            )
         
         supabase.storage.from_(bucket_name).upload(
             path=file_path,

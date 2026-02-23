@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from auth import require_session
 from database import initialize_supabase
 from config import get_settings
 from api import (
+    auth_router,
     patients_router,
     imu_router,
     prom_router,
@@ -46,12 +48,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(patients_router, prefix="/api")
-app.include_router(imu_router, prefix="/api")
-app.include_router(prom_router, prefix="/api")
-app.include_router(clinician_router, prefix="/api")
-app.include_router(hand_tracking_router, prefix="/api")
-app.include_router(speech_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(patients_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(imu_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(prom_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(clinician_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(hand_tracking_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(speech_router, prefix="/api", dependencies=[Depends(require_session)])
 
 
 @app.get("/")

@@ -2,7 +2,7 @@ import math
 import os
 import tempfile
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Path, Query
 import pandas as pd
 
 from .schemas import (
@@ -128,7 +128,7 @@ def _compute_severity(simulation: SimulationResponse) -> float:
 
 
 @router.get("/dbs_state/{patient_id}", response_model=DbsState)
-async def get_dbs_state(patient_id: str):
+async def get_dbs_state(patient_id: str = Path(..., min_length=1, max_length=64)):
     """Get DBS state for a patient including channel configuration and timeseries data."""
     try:
         dbs_state = get_dbs_state_for_patient(patient_id)
@@ -139,7 +139,7 @@ async def get_dbs_state(patient_id: str):
 
 @router.get("/dbs_tuning/{patient_id}", response_model=DbsTuningRecommendation)
 async def get_dbs_tuning(
-    patient_id: str,
+    patient_id: str = Path(..., min_length=1, max_length=64),
     include_simulation: bool = Query(default=False),
     tuple_count: int = Query(default=4, ge=2, le=16),
 ):

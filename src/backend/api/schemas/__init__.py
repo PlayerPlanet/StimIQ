@@ -13,6 +13,7 @@ from .simulation import (
     OptimizationStepResponse,
 )
 from .agent import AgentPromptRequest, AgentPromptResponse
+from .auth import SessionLoginRequest, SessionLoginResponse, SessionInfoResponse
 from .hand_tracking import (
     Point2D,
     WristFrameInput,
@@ -55,6 +56,9 @@ __all__ = [
     "OptimizationStepResponse",
     "AgentPromptRequest",
     "AgentPromptResponse",
+    "SessionLoginRequest",
+    "SessionLoginResponse",
+    "SessionInfoResponse",
     "Point2D",
     "WristFrameInput",
     "LineFollowRequest",

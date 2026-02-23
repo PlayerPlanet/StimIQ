@@ -25,13 +25,32 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 console.log(`API Client initialized. Base URL: ${API_BASE_URL}`);
 
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, { ...init, credentials: 'include' });
+}
+
+export async function loginSession(password: string): Promise<{ status: string; message: string; expires_at: string }> {
+  const response = await apiFetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) throw new Error('Failed to create session');
+  return response.json();
+}
+
+export async function logoutSession(): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+  if (!response.ok) throw new Error('Failed to clear session');
+}
+
 /**
  * Get all patients
  * GET /api/patients
  */
 export async function getClinicianPatients(): Promise<Patient[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/patients`);
+    const response = await apiFetch(`${API_BASE_URL}/patients`);
     if (response.ok) {
       return response.json();
     }
@@ -47,7 +66,7 @@ export async function getClinicianPatients(): Promise<Patient[]> {
  * GET /api/patients/{patientId}
  */
 export async function getPatientDetail(patientId: string): Promise<PatientDetail> {
-  const response = await fetch(`${API_BASE_URL}/patients/${patientId}`);
+  const response = await apiFetch(`${API_BASE_URL}/patients/${patientId}`);
   if (!response.ok) throw new Error('Patient not found');
   return response.json();
 }
@@ -57,7 +76,7 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
  * POST /api/patients
  */
 export async function createPatient(data: CreatePatientRequest): Promise<Patient> {
-  const response = await fetch(`${API_BASE_URL}/patients`, {
+  const response = await apiFetch(`${API_BASE_URL}/patients`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -79,7 +98,7 @@ export async function uploadIMU(
   formData.append('file', file);
   if (date) formData.append('date', date);
 
-  const response = await fetch(`${API_BASE_URL}/patients/${patientId}/imu-upload`, {
+  const response = await apiFetch(`${API_BASE_URL}/patients/${patientId}/imu-upload`, {
     method: 'POST',
     body: formData,
   });
@@ -94,7 +113,7 @@ export async function uploadIMU(
 export async function simulateHypotheticalParameters(
   data: HypotheticalSimulationRequest
 ): Promise<HypotheticalSimulationResponse> {
-  const response = await fetch(`${API_BASE_URL}/clinician/simulate`, {
+  const response = await apiFetch(`${API_BASE_URL}/clinician/simulate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -128,7 +147,7 @@ export async function getDbsTuningWithOptionalSimulation(
 
   const query = params.toString();
   const url = `${API_BASE_URL}/clinician/dbs_tuning/${patientId}${query ? `?${query}` : ''}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
 
   if (!response.ok) {
     throw new Error(`DBS tuning request failed (HTTP ${response.status})`);
@@ -144,7 +163,7 @@ export async function getDbsTuningWithOptionalSimulation(
 export async function optimizeSimulationStep(
   data: OptimizationStepRequest
 ): Promise<OptimizationStepResponse> {
-  const response = await fetch(`${API_BASE_URL}/clinician/optimize-step`, {
+  const response = await apiFetch(`${API_BASE_URL}/clinician/optimize-step`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -162,7 +181,7 @@ export async function optimizeSimulationStep(
  * POST /api/clinician/agent-prompt
  */
 export async function sendAgentPrompt(prompt: string): Promise<AgentPromptResponse> {
-  const response = await fetch(`${API_BASE_URL}/clinician/agent-prompt`, {
+  const response = await apiFetch(`${API_BASE_URL}/clinician/agent-prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),
@@ -182,7 +201,7 @@ export async function sendAgentPrompt(prompt: string): Promise<AgentPromptRespon
 export async function createLineFollowSession(
   data: LineFollowSessionCreateRequest
 ): Promise<LineFollowSessionCreateResponse> {
-  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions`, {
+  const response = await apiFetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -203,7 +222,7 @@ export async function processLineFollowSession(
   sessionId: string,
   data: LineFollowSessionProcessRequest
 ): Promise<LineFollowSessionProcessResponse> {
-  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions/${sessionId}/process`, {
+  const response = await apiFetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions/${sessionId}/process`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -223,7 +242,7 @@ export async function processLineFollowSession(
 export async function getLineFollowSessionResult(
   sessionId: string
 ): Promise<LineFollowSessionResult> {
-  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions/${sessionId}/result`);
+  const response = await apiFetch(`${API_BASE_URL}/v1/hand_tracking/line_follow/sessions/${sessionId}/result`);
 
   if (!response.ok) {
     throw new Error(`Get session result failed (HTTP ${response.status})`);
@@ -239,7 +258,7 @@ export async function getLineFollowSessionResult(
 export async function createFingerTapSession(
   data: FingerTapSessionCreateRequest
 ): Promise<FingerTapSessionCreateResponse> {
-  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions`, {
+  const response = await apiFetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -260,7 +279,7 @@ export async function processFingerTapSession(
   sessionId: string,
   data: FingerTapSessionProcessRequest
 ): Promise<FingerTapSessionProcessResponse> {
-  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions/${sessionId}/process`, {
+  const response = await apiFetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions/${sessionId}/process`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -280,7 +299,7 @@ export async function processFingerTapSession(
 export async function getFingerTapSessionResult(
   sessionId: string
 ): Promise<FingerTapSessionResult> {
-  const response = await fetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions/${sessionId}/result`);
+  const response = await apiFetch(`${API_BASE_URL}/v1/hand_tracking/finger_tap/sessions/${sessionId}/result`);
 
   if (!response.ok) {
     throw new Error(`Get session result failed (HTTP ${response.status})`);

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 
 class PromTestBase(BaseModel):
-    patient_id: str = Field(..., min_length=1)
+    patient_id: str = Field(..., min_length=1, max_length=64)
     test_date: date
     q1: int = Field(..., ge=1, le=7)
     q2: int = Field(..., ge=1, le=7)

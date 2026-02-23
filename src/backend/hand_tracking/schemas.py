@@ -27,10 +27,10 @@ class LineFollowRequest(BaseModel):
     end_radius: float = Field(default=0.03, gt=0.0, le=0.5)
     corridor_radius: float = Field(default=0.02, gt=0.0, le=0.5)
     max_duration_ms: int = Field(default=15000, gt=0, le=120000)
-    video_ref: str | None = None
-    handedness_expected: str | None = None
-    camera_orientation: str | None = None
-    frames: list[WristFrameInput] = Field(default_factory=list)
+    video_ref: str | None = Field(default=None, max_length=512)
+    handedness_expected: str | None = Field(default=None, max_length=16)
+    camera_orientation: str | None = Field(default=None, max_length=64)
+    frames: list[WristFrameInput] = Field(default_factory=list, max_length=5000)
 
     @model_validator(mode="after")
     def validate_line_endpoints(self) -> "LineFollowRequest":
@@ -46,7 +46,7 @@ class CreateSessionResponse(BaseModel):
 
 
 class ProcessSessionRequest(BaseModel):
-    frames: list[WristFrameInput] = Field(default_factory=list)
+    frames: list[WristFrameInput] = Field(default_factory=list, max_length=5000)
 
 
 class ProcessSessionResponse(BaseModel):
@@ -65,7 +65,7 @@ class LineFollowQuality(BaseModel):
     visible_fraction: float = Field(..., ge=0.0, le=1.0)
     out_of_frame_fraction: float = Field(..., ge=0.0, le=1.0)
     redo_recommended: bool
-    redo_instructions: list[str] = Field(default_factory=list)
+    redo_instructions: list[str] = Field(default_factory=list, max_length=20)
 
 
 class LineFollowMetrics(BaseModel):
@@ -83,7 +83,7 @@ class LineFollowMetrics(BaseModel):
 class LineFollowResult(BaseModel):
     session_id: UUID
     tracking_version: str = "landmark0-v1"
-    frames: list[WristFrameResult]
+    frames: list[WristFrameResult] = Field(default_factory=list, max_length=5000)
     quality: LineFollowQuality
     metrics: LineFollowMetrics
     artifacts: dict[str, str] = Field(default_factory=dict)
@@ -106,14 +106,14 @@ class FingerTapRequest(BaseModel):
     protocol_version: Literal["v1"] = "v1"
     patient_id: UUID | None = None
     max_duration_ms: int = Field(default=15000, gt=0, le=120000)
-    video_ref: str | None = None
-    handedness_expected: str | None = None
-    camera_orientation: str | None = None
-    frames: list[FingerTapFrameInput] = Field(default_factory=list)
+    video_ref: str | None = Field(default=None, max_length=512)
+    handedness_expected: str | None = Field(default=None, max_length=16)
+    camera_orientation: str | None = Field(default=None, max_length=64)
+    frames: list[FingerTapFrameInput] = Field(default_factory=list, max_length=5000)
 
 
 class ProcessFingerTapSessionRequest(BaseModel):
-    frames: list[FingerTapFrameInput] = Field(default_factory=list)
+    frames: list[FingerTapFrameInput] = Field(default_factory=list, max_length=5000)
 
 
 class FingerTapFrameResult(BaseModel):
@@ -126,7 +126,7 @@ class FingerTapFrameResult(BaseModel):
 class FingerTapQuality(BaseModel):
     visible_fraction: float = Field(..., ge=0.0, le=1.0)
     redo_recommended: bool
-    redo_instructions: list[str] = Field(default_factory=list)
+    redo_instructions: list[str] = Field(default_factory=list, max_length=20)
 
 
 class FingerTapMetrics(BaseModel):
@@ -143,9 +143,9 @@ class FingerTapMetrics(BaseModel):
 class FingerTapResult(BaseModel):
     session_id: UUID
     tracking_version: str = "finger-tap-landmark-v1"
-    frames: list[FingerTapFrameResult]
-    tap_indices: list[int] = Field(default_factory=list)
-    tap_times_s: list[float] = Field(default_factory=list)
+    frames: list[FingerTapFrameResult] = Field(default_factory=list, max_length=5000)
+    tap_indices: list[int] = Field(default_factory=list, max_length=1000)
+    tap_times_s: list[float] = Field(default_factory=list, max_length=1000)
     quality: FingerTapQuality
     metrics: FingerTapMetrics
     artifacts: dict[str, str] = Field(default_factory=dict)

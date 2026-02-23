@@ -28,7 +28,9 @@ export interface DbsState {
 }
 
 export async function fetchDbsState(patientId: string): Promise<DbsState> {
-  const response = await fetch(`${API_BASE_URL}/clinician/dbs_state/${patientId}`);
+  const response = await fetch(`${API_BASE_URL}/clinician/dbs_state/${patientId}`, {
+    credentials: 'include',
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch DBS state: ${response.status}`);
   }

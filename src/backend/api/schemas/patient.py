@@ -5,41 +5,41 @@ from pydantic import BaseModel, Field
 
 
 class CreatePatientRequest(BaseModel):
-    first_name: str = Field(..., min_length=1)
-    last_name: str = Field(..., min_length=1)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
     date_of_birth: Optional[date] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=2000)
 
 
 class PatientResponse(BaseModel):
     id: UUID
-    first_name: str
-    last_name: str
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
     date_of_birth: Optional[date]
-    notes: Optional[str]
+    notes: Optional[str] = Field(default=None, max_length=2000)
     created_at: datetime
 
 class PatientDetailResponse(PatientResponse):
     """Extended patient information for detail view"""
     # Contact Information
-    email: Optional[str] = None
-    phone: Optional[str] = None
+    email: Optional[str] = Field(default=None, max_length=254)
+    phone: Optional[str] = Field(default=None, max_length=32)
     
     # Demographics
-    gender: Optional[str] = None
+    gender: Optional[str] = Field(default=None, max_length=32)
     
     # DBS Treatment Information
     diagnosis_date: Optional[date] = None
     implant_date: Optional[date] = None
-    device_model: Optional[str] = None
-    device_serial: Optional[str] = None
-    lead_location: Optional[str] = None
+    device_model: Optional[str] = Field(default=None, max_length=120)
+    device_serial: Optional[str] = Field(default=None, max_length=120)
+    lead_location: Optional[str] = Field(default=None, max_length=120)
     
     # Clinical Team
-    primary_physician: Optional[str] = None
-    care_coordinator: Optional[str] = None
+    primary_physician: Optional[str] = Field(default=None, max_length=120)
+    care_coordinator: Optional[str] = Field(default=None, max_length=120)
     
     # Treatment Status
-    treatment_status: Optional[str] = None  # active, monitoring, adjustment_needed
+    treatment_status: Optional[str] = Field(default=None, max_length=64)  # active, monitoring, adjustment_needed
     last_programming_date: Optional[date] = None
     next_appointment: Optional[date] = None
