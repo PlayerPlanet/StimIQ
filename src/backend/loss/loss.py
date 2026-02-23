@@ -1,8 +1,14 @@
+"""Loss calculation module for stimulus parameter optimization.
+
+This module provides loss functions for evaluating DBS stimulus parameters.
+Supports patient-specific treatment goals for customized optimization.
+"""
+
 from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 import sys
 
 import numpy as np
@@ -86,7 +92,17 @@ def _load_model_bundle(model_path: str) -> tuple[Any, np.ndarray, np.ndarray]:
     return model, norm_mean, norm_std
 
 
-def calculate_loss(parameters: Any) -> float:
+def calculate_loss(parameters: Any, treatment_goals: Optional[Any] = None) -> float:
+    """Calculate loss for stimulation parameters.
+    
+    Args:
+        parameters: Stimulation parameters (4 x N matrix)
+        treatment_goals: Optional TreatmentGoals object to customize loss.
+                        If provided, patient is sampled with these goals attached.
+    
+    Returns:
+        Scalar loss value (mean predicted severity)
+    """
     _ensure_sim_importable()
 
     try:
@@ -110,7 +126,7 @@ def calculate_loss(parameters: Any) -> float:
 
     seed = int(cfg.seed)
     rng = np.random.default_rng(seed)
-    patient = sample_patient_params(rng, n=1)[0]
+    patient = sample_patient_params(rng, n=1, treatment_goals=treatment_goals)[0]
 
     stim = StimParams.from_matrix(param_matrix)
     simulated = simulator.run(stim_params=stim, patient=patient, config=rollout_cfg, rng=rng)
@@ -126,3 +142,57 @@ def calculate_loss(parameters: Any) -> float:
         pred = model(x).detach().cpu().numpy().reshape(-1)
 
     return float(np.mean(pred, dtype=np.float64))
+
+
+def calculate_loss_for_patient(
+    parameters: Any,
+    patient_id: str,
+    supabase_client: Optional[Any] = None,
+) -> float:
+    """Calculate loss for a specific patient using their treatment goals.
+    
+    This is a convenience wrapper that:
+    1. Retrieves the patient's treatment goals from the database
+    2. Calls calculate_loss() with those goals
+    
+    Args:
+        parameters: Stimulation parameters (4 x N matrix)
+        patient_id: ID of the patient (UUID as string)
+        supabase_client: Optional Supabase client. If not provided, will import from database module.
+    
+    Returns:
+        Scalar loss value
+    
+    Raises:
+        ValueError: If patient not found or has no treatment goals
+    """
+    if supabase_client is None:
+        try:
+            from database import get_supabase
+            supabase_client = get_supabase()
+        except ImportError:
+            raise ValueError("Supabase client not available. Provide as argument or ensure database module is importable.")
+    
+    # Retrieve patient's treatment goals
+    try:
+        response = supabase_client.table("treatment_goals").select("*").eq("patient_id", patient_id).execute()
+        if not response.data:
+            raise ValueError(f"No treatment goals found for patient {patient_id}")
+        
+        goals_data = response.data[0]
+        # Dynamically import TreatmentGoals
+        _ensure_sim_importable()
+        from sim.api.treatment_goals import TreatmentGoals
+        
+        treatment_goals = TreatmentGoals(
+            w_diag=float(goals_data.get("w_diag", 0.55)),
+            w_nms=float(goals_data.get("w_nms", 0.35)),
+            w_dur=float(goals_data.get("w_dur", 0.10)),
+            patient_id=patient_id,
+            notes=goals_data.get("notes"),
+        )
+        
+        return calculate_loss(parameters, treatment_goals=treatment_goals)
+    
+    except Exception as e:
+        raise ValueError(f"Failed to retrieve treatment goals for patient {patient_id}: {e}") from e

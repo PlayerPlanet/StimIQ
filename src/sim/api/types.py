@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
+
+from .treatment_goals import TreatmentGoals
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,7 @@ class PatientParams:
     brain: dict[str, float] = field(default_factory=dict)
     periphery: dict[str, float] = field(default_factory=dict)
     sensor: dict[str, float] = field(default_factory=dict)
+    treatment_goals: Optional[TreatmentGoals] = None
 
 
 @dataclass(frozen=True)

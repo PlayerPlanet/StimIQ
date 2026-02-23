@@ -4,9 +4,11 @@ import argparse
 import csv
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
+
+from ..api.treatment_goals import TreatmentGoals
 
 # Task order in PADS preprocessed movement binaries. This follows
 # src/sim/PADS/scripts/run_preprocessing*.py after channel pruning.
@@ -131,10 +133,11 @@ def build_severity_proxy(
     age_at_diagnosis: float | None,
     duration_mu: float,
     duration_sigma: float,
-    w_diag: float,
-    w_nms: float,
-    w_dur: float,
+    treatment_goals: Optional[TreatmentGoals] = None,
 ) -> float:
+    if treatment_goals is None:
+        treatment_goals = TreatmentGoals.default()
+    
     diag = {-1: -1.0, 0: -1.0, 1: 1.0, 2: 0.0}.get(label, 0.0)
     nms_burden = float(np.mean(questionnaire > 0.5))  # [0,1]
     nms = 2.0 * nms_burden - 1.0  # [-1,1]
@@ -147,9 +150,35 @@ def build_severity_proxy(
     # squash duration to [-1,1]
     dur = float(np.tanh(dur))
 
-    total_w = max(1e-6, w_diag + w_nms + w_dur)
-    z = (w_diag * diag + w_nms * nms + w_dur * dur) / total_w
+    total_w = max(1e-6, treatment_goals.total_weight)
+    z = (treatment_goals.w_diag * diag + treatment_goals.w_nms * nms + treatment_goals.w_dur * dur) / total_w
     return float(np.clip(z, -1.0, 1.0))
+
+
+def load_patient_goals(path: Path) -> dict[str, TreatmentGoals]:
+    """Load patient-specific treatment goals from CSV."""
+    result = {}
+    if not path.exists():
+        raise FileNotFoundError(f"Patient goals file not found: {path}")
+    
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            sid = row.get("subject_id", "").strip()
+            if not sid:
+                continue
+            try:
+                goals = TreatmentGoals(
+                    w_diag=float(row.get("w_diag", 0.55)),
+                    w_nms=float(row.get("w_nms", 0.35)),
+                    w_dur=float(row.get("w_dur", 0.10)),
+                    patient_id=sid,
+                    notes=row.get("notes"),
+                )
+                result[sid] = goals
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Failed to parse goals for subject {sid}: {e}") from e
+    return result
 
 
 def parse_args() -> argparse.Namespace:
@@ -166,9 +195,10 @@ def parse_args() -> argparse.Namespace:
         default=",".join(TASKS),
         help="Comma-separated subset of tasks",
     )
-    p.add_argument("--w-diag", type=float, default=0.55)
-    p.add_argument("--w-nms", type=float, default=0.35)
-    p.add_argument("--w-dur", type=float, default=0.10)
+    p.add_argument("--w-diag", type=float, default=0.55, help="Default weight for diagnosis (deprecated, use --patient-goals-file)")
+    p.add_argument("--w-nms", type=float, default=0.35, help="Default weight for NMS (deprecated, use --patient-goals-file)")
+    p.add_argument("--w-dur", type=float, default=0.10, help="Default weight for duration (deprecated, use --patient-goals-file)")
+    p.add_argument("--patient-goals-file", type=str, default=None, help="Path to CSV with per-patient treatment goals")
     p.add_argument("--save-subject-id", action="store_true", help="Also store subject_ids for each window in NPZ.")
     return p.parse_args()
 
@@ -188,6 +218,18 @@ def main() -> None:
     subjects = load_file_list(file_list_path)
     if not subjects:
         raise RuntimeError("No subjects found in file_list.csv")
+    
+    # Load patient-specific treatment goals if provided
+    patient_goals_map: dict[str, TreatmentGoals] = {}
+    if args.patient_goals_file:
+        patient_goals_map = load_patient_goals(Path(args.patient_goals_file))
+    
+    # Create default goals for CLI args (backward compatibility)
+    default_goals = TreatmentGoals(
+        w_diag=args.w_diag,
+        w_nms=args.w_nms,
+        w_dur=args.w_dur,
+    )
 
     # Fit duration normalization from available values.
     durations = []
@@ -216,6 +258,10 @@ def main() -> None:
 
         movement = load_movement(mov_path)
         questionnaire = load_questionnaire(q_path)
+        
+        # Use patient-specific goals if available, otherwise use defaults
+        goals = patient_goals_map.get(s.subject_id, default_goals)
+        
         z = build_severity_proxy(
             label=s.label,
             questionnaire=questionnaire,
@@ -223,9 +269,7 @@ def main() -> None:
             age_at_diagnosis=s.age_at_diagnosis,
             duration_mu=duration_mu,
             duration_sigma=duration_sigma,
-            w_diag=args.w_diag,
-            w_nms=args.w_nms,
-            w_dur=args.w_dur,
+            treatment_goals=goals,
         )
 
         for task in task_list:

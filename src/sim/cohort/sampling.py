@@ -1,12 +1,30 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import numpy as np
 
+from sim.api.treatment_goals import TreatmentGoals
 from sim.api.types import PatientParams
 from sim.cohort.transforms import clamp, positive, stable_damping
 
 
-def sample_patient_params(rng: np.random.Generator, n: int = 1) -> list[PatientParams]:
+def sample_patient_params(
+    rng: np.random.Generator,
+    n: int = 1,
+    treatment_goals: Optional[TreatmentGoals] = None,
+) -> list[PatientParams]:
+    """Sample random patient parameters from population distributions.
+    
+    Args:
+        rng: Random number generator
+        n: Number of patients to sample
+        treatment_goals: Optional custom treatment goals to attach to all sampled patients.
+                        If None, patients will have None for treatment_goals.
+    
+    Returns:
+        List of sampled PatientParams
+    """
     patients: list[PatientParams] = []
     for _ in range(n):
         brain = {
@@ -25,5 +43,12 @@ def sample_patient_params(rng: np.random.Generator, n: int = 1) -> list[PatientP
             "bias_std": positive(rng.lognormal(mean=-4.2, sigma=0.3), minimum=0.0005),
             "drift_per_s": positive(rng.lognormal(mean=-6.0, sigma=0.5), minimum=1e-5),
         }
-        patients.append(PatientParams(brain=brain, periphery=periphery, sensor=sensor))
+        patients.append(
+            PatientParams(
+                brain=brain,
+                periphery=periphery,
+                sensor=sensor,
+                treatment_goals=treatment_goals,
+            )
+        )
     return patients

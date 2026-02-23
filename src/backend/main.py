@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import initialize_supabase
 from config import get_settings
-from api import patients_router, imu_router, prom_router, clinician_router
+from api import patients_router, imu_router, prom_router, clinician_router, treatment_goals_router
 
 
 @asynccontextmanager
@@ -42,6 +42,7 @@ app.include_router(patients_router, prefix="/api")
 app.include_router(imu_router, prefix="/api")
 app.include_router(prom_router, prefix="/api")
 app.include_router(clinician_router, prefix="/api")
+app.include_router(treatment_goals_router, prefix="/api")
 
 
 @app.get("/")
