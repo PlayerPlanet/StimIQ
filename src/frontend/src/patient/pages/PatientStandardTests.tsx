@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
 import { Modal } from '../../components/common/Modal';
-import { sendAgentPrompt } from '../../lib/apiClient';
 
 type TestKey = 'finger-tapping' | 'hand-movement' | 'speech-task' | 'walking-test';
 
@@ -81,35 +80,6 @@ const STANDARD_TESTS: TestCardConfig[] = [
 export function PatientStandardTests() {
   const navigate = useNavigate();
   const [activeTest, setActiveTest] = useState<TestCardConfig | null>(null);
-  const [promptText, setPromptText] = useState('');
-  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false);
-  const [isSendingPrompt, setIsSendingPrompt] = useState(false);
-  const [agentResponseText, setAgentResponseText] = useState('');
-  const [agentError, setAgentError] = useState<string | null>(null);
-  const [lastPrompt, setLastPrompt] = useState('');
-
-  const handleSendPrompt = async () => {
-    const prompt = promptText.trim();
-    if (!prompt) {
-      return;
-    }
-
-    setLastPrompt(prompt);
-    setIsAgentModalOpen(true);
-    setIsSendingPrompt(true);
-    setAgentError(null);
-    setAgentResponseText('');
-
-    try {
-      const response = await sendAgentPrompt(prompt);
-      setAgentResponseText(response.response_text || 'No response returned.');
-      setPromptText('');
-    } catch (error) {
-      setAgentError(error instanceof Error ? error.message : 'Failed to send prompt.');
-    } finally {
-      setIsSendingPrompt(false);
-    }
-  };
 
   return (
     <PatientLayout>
@@ -160,30 +130,6 @@ export function PatientStandardTests() {
                 tune your treatment more precisely for you."
               </p>
               <p className="text-xs text-text-muted mt-4">Dr. Lehtinen, Neurologist</p>
-              <form
-                className="mt-auto pt-4"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void handleSendPrompt();
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="chat with your AI assistant..."
-                    value={promptText}
-                    onChange={(event) => setPromptText(event.target.value)}
-                    className="flex-1 rounded-full border border-border-subtle bg-surface px-4 py-2 text-sm text-text-main placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSendingPrompt || promptText.trim().length === 0}
-                    className="rounded-full bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy disabled:opacity-60"
-                  >
-                    {isSendingPrompt ? 'Sending...' : 'Send'}
-                  </button>
-                </div>
-              </form>
             </Card>
           </div>
 
@@ -268,38 +214,6 @@ export function PatientStandardTests() {
         )}
       </Modal>
 
-      <Modal
-        isOpen={isAgentModalOpen}
-        onClose={() => setIsAgentModalOpen(false)}
-        title="Clinician AI response"
-        size="lg"
-      >
-        <div className="space-y-4">
-          <div className="rounded-sm border border-border-subtle bg-surface-alt p-3">
-            <p className="text-xs uppercase tracking-wide text-text-muted font-semibold">Prompt</p>
-            <p className="text-sm text-text-main mt-1">{lastPrompt}</p>
-          </div>
-
-          {isSendingPrompt && (
-            <p className="text-sm text-text-muted">Contacting backend agent...</p>
-          )}
-
-          {agentError && (
-            <div className="rounded-sm border border-amber-200 bg-amber-50 p-3">
-              <p className="text-sm text-amber-800">{agentError}</p>
-            </div>
-          )}
-
-          {!isSendingPrompt && !agentError && (
-            <div className="rounded-sm border border-border-subtle bg-surface p-3">
-              <p className="text-xs uppercase tracking-wide text-text-muted font-semibold">Response</p>
-              <p className="text-sm text-text-main mt-1 whitespace-pre-wrap">
-                {agentResponseText || 'No response returned.'}
-              </p>
-            </div>
-          )}
-        </div>
-      </Modal>
     </PatientLayout>
   );
 }

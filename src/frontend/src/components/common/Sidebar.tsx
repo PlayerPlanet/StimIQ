@@ -25,7 +25,7 @@ export function Sidebar({ links, title = 'StimIQ - DBS Treatment', userType, nav
   const location = useLocation();
 
   const sidebarContent = (
-    <aside className="w-64 bg-brand-navy h-full flex flex-col shadow-xl" aria-label="Main navigation">
+    <aside className="w-64 bg-brand-navy h-full md:h-screen flex flex-col shadow-xl relative" aria-label="Main navigation">
       {/* Logo/Header */}
       <div className="p-6 border-b border-brand-blue/20 flex items-start justify-between">
         <div>
@@ -49,7 +49,7 @@ export function Sidebar({ links, title = 'StimIQ - DBS Treatment', userType, nav
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 overflow-y-auto pb-56 md:pb-64">
         <div className="space-y-2">
           {links.map((link) => {
             const isActive = location.pathname === link.path;
@@ -73,7 +73,7 @@ export function Sidebar({ links, title = 'StimIQ - DBS Treatment', userType, nav
       </nav>
 
       {/* Footer - Create Patient or Demo toggle */}
-      <div className="p-4 border-t border-brand-blue/20 space-y-3">
+      <div className="p-4 border-t border-brand-blue/20 space-y-3 absolute inset-x-0 bottom-0 bg-brand-navy">
         {footerActions}
         <Link
           to={userType === 'patient' ? '/clinician' : '/patient'}
@@ -89,8 +89,10 @@ export function Sidebar({ links, title = 'StimIQ - DBS Treatment', userType, nav
   return (
     <>
       {/* Desktop sidebar - always visible */}
-      <div className="hidden md:block min-h-screen">
-        {sidebarContent}
+      <div className="hidden md:block w-64 shrink-0">
+        <div className="fixed inset-y-0 left-0 z-40 w-64">
+          {sidebarContent}
+        </div>
       </div>
 
       {/* Mobile sidebar - overlay drawer */}
