@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     loss_xgboost_model_path: Optional[str] = None
     loss_baseline_cache_path: Optional[str] = None
     loss_baseline_cache_enabled: bool = True
+    auth_required: bool = True
     session_login_password: str
     session_cookie_name: str = "stimiq_session"
     session_ttl_minutes: int = 480

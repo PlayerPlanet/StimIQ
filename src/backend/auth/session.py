@@ -68,6 +68,9 @@ def _extract_session_id(request: Request) -> Optional[str]:
 
 
 def require_session(request: Request) -> str:
+    if not get_settings().auth_required:
+        return "demo-anonymous"
+
     session_id = _extract_session_id(request)
     if not session_id or not validate_session(session_id):
         raise HTTPException(
