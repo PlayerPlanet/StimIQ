@@ -2,11 +2,27 @@ import { useState } from 'react';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
 import { PatientPromForm } from '../components/PatientPromForm';
-import { getOrCreateVisitorPatientId } from '../utils/visitorIdentity';
+import {
+  getDataCollectionConsent,
+  getOrCreateVisitorPatientId,
+  setDataCollectionConsent,
+  type DataCollectionConsent,
+} from '../utils/visitorIdentity';
 
 export function PatientDailyReport() {
-  const visitorPatientId = getOrCreateVisitorPatientId();
+  const [consent, setConsent] = useState<DataCollectionConsent | null>(() => getDataCollectionConsent());
+  const visitorPatientId = consent === 'approved' ? getOrCreateVisitorPatientId() : null;
   const [isCompleted, setIsCompleted] = useState(false);
+
+  const handleApprove = () => {
+    setDataCollectionConsent('approved');
+    setConsent('approved');
+  };
+
+  const handleReject = () => {
+    setDataCollectionConsent('rejected');
+    setConsent('rejected');
+  };
 
   return (
     <PatientLayout>
@@ -34,14 +50,42 @@ export function PatientDailyReport() {
                   We use a generated visitor patient ID to link your daily reports and test results on
                   this device.
                 </p>
-                <p className="text-xs text-text-muted">Visitor ID: {visitorPatientId}</p>
+                <p className="text-xs text-text-muted">
+                  Status: {consent === 'approved' ? 'Approved' : consent === 'rejected' ? 'Rejected' : 'Not decided'}
+                </p>
+                <p className="text-xs text-text-muted">Visitor ID: {visitorPatientId ?? 'null'}</p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleApprove}
+                    className="rounded-sm bg-brand-blue px-3 py-1 text-xs font-semibold text-white hover:bg-brand-navy"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReject}
+                    className="rounded-sm border border-border-subtle bg-surface px-3 py-1 text-xs font-semibold text-text-main hover:border-brand-blue"
+                  >
+                    Reject
+                  </button>
+                </div>
               </Card>
-              <PatientPromForm
-                patientId={visitorPatientId}
-                onCompleted={() => {
-                  setIsCompleted(true);
-                }}
-              />
+              {consent === 'approved' && visitorPatientId ? (
+                <PatientPromForm
+                  patientId={visitorPatientId}
+                  onCompleted={() => {
+                    setIsCompleted(true);
+                  }}
+                />
+              ) : (
+                <Card className="p-6 text-center">
+                  <h2 className="text-lg font-semibold text-text-main">Data collection disabled</h2>
+                  <p className="text-text-muted text-sm mt-1">
+                    Approve data collection to submit daily reports.
+                  </p>
+                </Card>
+              )}
             </>
           )}
         </div>

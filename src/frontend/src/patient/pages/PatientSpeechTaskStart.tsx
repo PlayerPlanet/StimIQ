@@ -1,9 +1,39 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
+import {
+  getDataCollectionConsent,
+  getOrCreateVisitorPatientId,
+  setDataCollectionConsent,
+  type DataCollectionConsent,
+} from '../utils/visitorIdentity';
 
 export function PatientSpeechTaskStart() {
   const navigate = useNavigate();
+  const [startError, setStartError] = useState<string | null>(null);
+  const [consent, setConsent] = useState<DataCollectionConsent | null>(() => getDataCollectionConsent());
+  const visitorPatientId = consent === 'approved' ? getOrCreateVisitorPatientId() : null;
+
+  const handleApprove = () => {
+    setDataCollectionConsent('approved');
+    setConsent('approved');
+    setStartError(null);
+  };
+
+  const handleReject = () => {
+    setDataCollectionConsent('rejected');
+    setConsent('rejected');
+    setStartError('Data collection is rejected. No voice recording data will be sent.');
+  };
+
+  const handleBeginTest = () => {
+    if (consent !== 'approved') {
+      setStartError('Approve data collection to start this test.');
+      return;
+    }
+    navigate('/patient/standard-tests/speech-task/session');
+  };
 
   return (
     <PatientLayout>
@@ -23,13 +53,44 @@ export function PatientSpeechTaskStart() {
               <li>Speak at a comfortable volume and steady pace.</li>
               <li>Follow all three steps in order for comparable results.</li>
             </ul>
+            <div className="rounded-sm border border-border-subtle bg-surface-alt p-3 space-y-1">
+              <p className="text-sm font-semibold text-text-main">Data collection note</p>
+              <p className="text-xs text-text-muted">
+                We generate a visitor patient ID and attach it to this speech test so your results can
+                be saved across visits on this device.
+              </p>
+              <p className="text-xs text-text-muted">
+                Status: {consent === 'approved' ? 'Approved' : consent === 'rejected' ? 'Rejected' : 'Not decided'}
+              </p>
+              <p className="text-xs text-text-muted">Visitor ID: {visitorPatientId ?? 'null'}</p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  className="rounded-sm bg-brand-blue px-3 py-1 text-xs font-semibold text-white hover:bg-brand-navy"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  className="rounded-sm border border-border-subtle bg-surface px-3 py-1 text-xs font-semibold text-text-main hover:border-brand-blue"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
             <button
               type="button"
-              onClick={() => navigate('/patient/standard-tests/speech-task/session')}
-              className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy"
+              onClick={handleBeginTest}
+              disabled={consent !== 'approved'}
+              className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy disabled:opacity-60"
             >
               Begin test
             </button>
+            {startError && (
+              <p className="text-sm text-amber-700">{startError}</p>
+            )}
           </Card>
         </div>
       </div>

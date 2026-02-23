@@ -3,22 +3,45 @@ import { useNavigate } from 'react-router-dom';
 import { PatientLayout } from '../../layouts/PatientLayout';
 import { Card } from '../../components/common/Card';
 import { createFingerTapSession } from '../../lib/apiClient';
-import { getOrCreateVisitorPatientId } from '../utils/visitorIdentity';
+import {
+  getDataCollectionConsent,
+  getOrCreateVisitorPatientId,
+  setDataCollectionConsent,
+  type DataCollectionConsent,
+} from '../utils/visitorIdentity';
 
 export function PatientFingerTappingTestStart() {
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const visitorPatientId = getOrCreateVisitorPatientId();
+  const [consent, setConsent] = useState<DataCollectionConsent | null>(() => getDataCollectionConsent());
+  const visitorPatientId = consent === 'approved' ? getOrCreateVisitorPatientId() : null;
+
+  const handleApprove = () => {
+    setDataCollectionConsent('approved');
+    setConsent('approved');
+    setStartError(null);
+  };
+
+  const handleReject = () => {
+    setDataCollectionConsent('rejected');
+    setConsent('rejected');
+    setStartError('Data collection is rejected. No test data will be sent.');
+  };
 
   const handleBeginTest = async () => {
+    if (consent !== 'approved') {
+      setStartError('Approve data collection to start this test.');
+      return;
+    }
+
     setIsStarting(true);
     setStartError(null);
     try {
       const response = await createFingerTapSession({
         test_type: 'FINGER_TAP',
         protocol_version: 'v1',
-        patient_id: visitorPatientId,
+        patient_id: visitorPatientId ?? null,
         max_duration_ms: 15000,
         frames: [],
       });
@@ -53,12 +76,31 @@ export function PatientFingerTappingTestStart() {
                 We generate a visitor patient ID and attach it to this test so your results can be
                 saved across visits on this device.
               </p>
-              <p className="text-xs text-text-muted">Visitor ID: {visitorPatientId}</p>
+              <p className="text-xs text-text-muted">
+                Status: {consent === 'approved' ? 'Approved' : consent === 'rejected' ? 'Rejected' : 'Not decided'}
+              </p>
+              <p className="text-xs text-text-muted">Visitor ID: {visitorPatientId ?? 'null'}</p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  className="rounded-sm bg-brand-blue px-3 py-1 text-xs font-semibold text-white hover:bg-brand-navy"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  className="rounded-sm border border-border-subtle bg-surface px-3 py-1 text-xs font-semibold text-text-main hover:border-brand-blue"
+                >
+                  Reject
+                </button>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => void handleBeginTest()}
-              disabled={isStarting}
+              disabled={isStarting || consent !== 'approved'}
               className="rounded-sm bg-brand-blue px-4 py-2 text-sm font-semibold text-white hover:bg-brand-navy disabled:opacity-60"
             >
               {isStarting ? 'Starting...' : 'Begin test'}
