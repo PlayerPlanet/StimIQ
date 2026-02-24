@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "StimIQ: Data-Driven DBS Optimisation for Parkinson's Disease"
+version: 0.1.0
+date-released: 2026-02-24
+license: GPL-3.0
+repository-code: "https://github.com/PlayerPlanet/StimIQ"
+abstract: >
+  StimIQ is a clinician-facing decision-support system for Deep Brain Stimulation
+  (DBS) programming in Parkinson's disease. The platform integrates a physics-informed
+  tremor simulation pipeline, Bayesian optimisation for stimulation parameter
+  recommendation, and an LLM-based medical agent that produces interpretable,
+  human-readable explanations of model decisions.
+authors:
+  - family-names: Kiirikki
+    given-names: Konsta
+    affiliation: "Aalto University, School of Science"
+  - family-names: Juhava
+    given-names: Nikolas
+    affiliation: "Aalto University, School of Science"
+  - family-names: Laakso
+    given-names: Atte
+    affiliation: "Aalto University, School of Science"
+  - family-names: Keiski
+    given-names: Niklas
+    affiliation: "Aalto University, School of Science"
+keywords:
+  - deep brain stimulation
+  - Parkinson's disease
+  - Bayesian optimisation
+  - tremor simulation
+  - decision support
