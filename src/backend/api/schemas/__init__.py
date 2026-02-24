@@ -12,7 +12,7 @@ from .simulation import (
     OptimizationStepRequest,
     OptimizationStepResponse,
 )
-from .agent import AgentPromptRequest, AgentPromptResponse
+from .agent import AgentPromptRequest, AgentPromptResponse, PatientAnalysisRequest, PatientAnalysisResponse, PromDataEntry
 from .auth import SessionLoginRequest, SessionLoginResponse, SessionInfoResponse
 from .hand_tracking import (
     Point2D,
@@ -64,6 +64,9 @@ __all__ = [
     "OptimizationStepResponse",
     "AgentPromptRequest",
     "AgentPromptResponse",
+    "PatientAnalysisRequest",
+    "PatientAnalysisResponse",
+    "PromDataEntry",
     "SessionLoginRequest",
     "SessionLoginResponse",
     "SessionInfoResponse",
