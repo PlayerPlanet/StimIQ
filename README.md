@@ -37,6 +37,27 @@ HackEurope 2026 — team **bluescreeners**
 
 Atte Laakso · Konsta Kiirikki · Niklas Keiski · Nikolas Juhava
 
+## License
+
+StimIQ is released under the [GNU General Public License v3.0](LICENSE). Any derivative work or software that incorporates this code must also be released under the same license.
+
+## Citation
+
+If you use StimIQ in your research, please cite it as follows:
+
+```bibtex
+@software{stimiq2026,
+  author    = {Kiirikki, Konsta and Juhava, Nikolas and Laakso, Atte and Keiski, Niklas},
+  title     = {{StimIQ}: Data-Driven {DBS} Optimisation for {Parkinson's} Disease},
+  year      = {2026},
+  url       = {https://github.com/PlayerPlanet/StimIQ},
+  license   = {GPL-3.0},
+  note      = {Aalto University, School of Science}
+}
+```
+
+A machine-readable citation file is available at [`CITATION.cff`](CITATION.cff).
+
 ## References
 
 1. PhysioNet Contributors. *Parkinson's Disease Smartwatch Dataset (PADS)*. PhysioNet, 2023. <https://physionet.org/content/parkinsons-disease-smartwatch/1.0.0/>
