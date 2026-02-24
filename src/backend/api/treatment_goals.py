@@ -27,7 +27,7 @@ async def get_treatment_goals(patient_id: UUID):
     
     try:
         response = supabase.table("patients") \
-            .select("id, created_at, updated_at, treatment_w_motor, treatment_w_non_motor, treatment_w_duration, treatment_non_motor_diary_ratio, treatment_goals_notes") \
+            .select("id, created_at, updated_at, treatment_w_motor, treatment_w_non_motor, treatment_w_duration, treatment_w_speech, treatment_non_motor_diary_ratio, treatment_goals_notes") \
             .eq("id", str(patient_id)) \
             .limit(1) \
             .execute()
@@ -40,11 +40,13 @@ async def get_treatment_goals(patient_id: UUID):
         w_motor = row.get("treatment_w_motor")
         w_non_motor = row.get("treatment_w_non_motor")
         w_duration = row.get("treatment_w_duration")
+        w_speech = row.get("treatment_w_speech")
         non_motor_diary_ratio = row.get("treatment_non_motor_diary_ratio")
-        if w_motor is None or w_non_motor is None or w_duration is None:
+        if w_motor is None or w_non_motor is None or w_duration is None or w_speech is None:
             w_motor = default_preset.w_motor
             w_non_motor = default_preset.w_non_motor
             w_duration = default_preset.w_duration
+            w_speech = default_preset.w_speech
         if non_motor_diary_ratio is None:
             non_motor_diary_ratio = default_preset.non_motor_diary_ratio
         return TreatmentGoalsResponse(
@@ -53,6 +55,7 @@ async def get_treatment_goals(patient_id: UUID):
             w_motor=w_motor,
             w_non_motor=w_non_motor,
             w_duration=w_duration,
+            w_speech=w_speech,
             non_motor_diary_ratio=non_motor_diary_ratio,
             notes=row.get("treatment_goals_notes"),
             created_at=row.get("created_at"),
@@ -81,6 +84,7 @@ async def update_treatment_goals(
             "treatment_w_motor": goals.w_motor,
             "treatment_w_non_motor": goals.w_non_motor,
             "treatment_w_duration": goals.w_duration,
+            "treatment_w_speech": goals.w_speech,
             "treatment_non_motor_diary_ratio": goals.non_motor_diary_ratio,
             "treatment_goals_notes": goals.notes,
         }
@@ -103,6 +107,7 @@ async def update_treatment_goals(
             w_motor=row.get("treatment_w_motor"),
             w_non_motor=row.get("treatment_w_non_motor"),
             w_duration=row.get("treatment_w_duration"),
+            w_speech=row.get("treatment_w_speech"),
             non_motor_diary_ratio=row.get("treatment_non_motor_diary_ratio"),
             notes=row.get("treatment_goals_notes"),
             created_at=row.get("created_at"),

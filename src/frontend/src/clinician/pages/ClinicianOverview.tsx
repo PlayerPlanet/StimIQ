@@ -56,7 +56,8 @@ export function ClinicianOverview() {
             <ul className="mt-2 list-disc pl-5 text-sm text-text-muted space-y-1">
               <li>Motor from wearable IMU movement features.</li>
               <li>Non-motor from PROM diary + standardized tests (configurable diary-to-tests split).</li>
-              <li>Disease duration from time since diagnosis; speech weighting is not yet active.</li>
+              <li>Disease duration from time since diagnosis.</li>
+              <li>Speech severity weighting (placeholder until speech metrics are integrated).</li>
             </ul>
             <p className="text-sm text-text-muted mt-4 leading-relaxed">
               The architecture separates a latent neural generator (capturing oscillatory dynamics), a biomechanical

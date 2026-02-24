@@ -20,6 +20,7 @@ BASELINE_CACHE_PATH_DEFAULT = Path(__file__).resolve().parents[1] / "artifacts" 
 DEFAULT_WEIGHT_MOTOR = 0.33
 DEFAULT_WEIGHT_NON_MOTOR = 0.33
 DEFAULT_WEIGHT_DURATION = 0.34
+DEFAULT_WEIGHT_SPEECH = 0.0
 DEFAULT_NON_MOTOR_DIARY_RATIO = 0.5
 
 
@@ -252,9 +253,14 @@ def _extract_non_motor_diary_ratio(goals: Any, default: float = DEFAULT_NON_MOTO
         return default
 
 
-def _normalize_weights(w_motor: float, w_non_motor: float, w_duration: float) -> tuple[float, float, float]:
-    total = max(1e-9, w_motor + w_non_motor + w_duration)
-    return w_motor / total, w_non_motor / total, w_duration / total
+def _normalize_weights(
+    w_motor: float,
+    w_non_motor: float,
+    w_duration: float,
+    w_speech: float,
+) -> tuple[float, float, float, float]:
+    total = max(1e-9, w_motor + w_non_motor + w_duration + w_speech)
+    return w_motor / total, w_non_motor / total, w_duration / total, w_speech / total
 
 
 def _extract_standard_test_severity(payload: dict[str, Any] | None) -> float | None:
@@ -317,7 +323,7 @@ def _fetch_patient_context(patient_id: str) -> dict[str, Any] | None:
         patient_resp = (
             supabase.table("patients")
             .select(
-                "id, diagnosis_date, treatment_w_motor, treatment_w_non_motor, treatment_w_duration, treatment_non_motor_diary_ratio"
+                "id, diagnosis_date, treatment_w_motor, treatment_w_non_motor, treatment_w_duration, treatment_w_speech, treatment_non_motor_diary_ratio"
             )
             .eq("id", patient_id)
             .limit(1)
@@ -594,13 +600,19 @@ def calculate_loss(
         legacy_key="w_dur",
         default=float(patient_row.get("treatment_w_duration", DEFAULT_WEIGHT_DURATION)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_DURATION,
     )
+    w_speech = _extract_goal_value(
+        treatment_goals,
+        new_key="w_speech",
+        legacy_key="w_speech",
+        default=float(patient_row.get("treatment_w_speech", DEFAULT_WEIGHT_SPEECH)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_SPEECH,
+    )
     diary_ratio_default = (
         float(patient_row.get("treatment_non_motor_diary_ratio", DEFAULT_NON_MOTOR_DIARY_RATIO))
         if isinstance(patient_row, dict)
         else DEFAULT_NON_MOTOR_DIARY_RATIO
     )
     diary_ratio = _extract_non_motor_diary_ratio(treatment_goals, default=diary_ratio_default)
-    w_motor, w_non_motor, w_duration = _normalize_weights(w_motor, w_non_motor, w_duration)
+    w_motor, w_non_motor, w_duration, w_speech = _normalize_weights(w_motor, w_non_motor, w_duration, w_speech)
 
     non_motor_component = 0.0
     if patient_context:
@@ -622,10 +634,12 @@ def calculate_loss(
         non_motor_component = float(np.clip(2.0 * non_motor_01 - 1.0, -1.0, 1.0))
 
     duration_component = _duration_component_from_patient_row(patient_row if isinstance(patient_row, dict) else None)
+    speech_component = 0.0
 
     composed = (
         w_motor * motor_component
         + w_non_motor * non_motor_component
         + w_duration * duration_component
+        + w_speech * speech_component
     )
     return float(np.clip(composed, -1.0, 1.0))

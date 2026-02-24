@@ -47,6 +47,8 @@ async def create_patient(patient: CreatePatientRequest):
         patient_data["treatment_w_non_motor"] = float(patient.treatment_w_non_motor)
     if patient.treatment_w_duration is not None:
         patient_data["treatment_w_duration"] = float(patient.treatment_w_duration)
+    if patient.treatment_w_speech is not None:
+        patient_data["treatment_w_speech"] = float(patient.treatment_w_speech)
     if patient.treatment_non_motor_diary_ratio is not None:
         patient_data["treatment_non_motor_diary_ratio"] = float(patient.treatment_non_motor_diary_ratio)
     if patient.treatment_goals_notes is not None:

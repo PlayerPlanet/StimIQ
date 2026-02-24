@@ -39,6 +39,7 @@ export interface CreatePatientRequest {
   treatment_w_motor?: number | null;
   treatment_w_non_motor?: number | null;
   treatment_w_duration?: number | null;
+  treatment_w_speech?: number | null;
   treatment_non_motor_diary_ratio?: number | null;
   treatment_goals_notes?: string | null;
 }
@@ -274,6 +275,7 @@ export interface TreatmentGoals {
   w_motor: number | null;
   w_non_motor: number | null;
   w_duration: number | null;
+  w_speech: number | null;
   non_motor_diary_ratio: number | null;
   notes?: string | null;
   created_at?: string;
@@ -284,6 +286,7 @@ export interface TreatmentGoalsRequest {
   w_motor: number;
   w_non_motor: number;
   w_duration: number;
+  w_speech: number;
   non_motor_diary_ratio: number;
   notes?: string | null;
 }
@@ -294,6 +297,7 @@ export interface TreatmentGoalsPreset {
   w_motor: number;
   w_non_motor: number;
   w_duration: number;
+  w_speech: number;
   non_motor_diary_ratio: number;
 }
 
@@ -305,6 +309,7 @@ export const TREATMENT_GOAL_PRESETS: TreatmentGoalsPreset[] = [
     w_motor: 0.33,
     w_non_motor: 0.33,
     w_duration: 0.34,
+    w_speech: 0.0,
     non_motor_diary_ratio: 0.5,
   },
   {
@@ -313,6 +318,7 @@ export const TREATMENT_GOAL_PRESETS: TreatmentGoalsPreset[] = [
     w_motor: 0.55,
     w_non_motor: 0.35,
     w_duration: 0.10,
+    w_speech: 0.0,
     non_motor_diary_ratio: 0.5,
   },
   {
@@ -321,6 +327,7 @@ export const TREATMENT_GOAL_PRESETS: TreatmentGoalsPreset[] = [
     w_motor: 0.20,
     w_non_motor: 0.70,
     w_duration: 0.10,
+    w_speech: 0.0,
     non_motor_diary_ratio: 0.65,
   },
 ];
