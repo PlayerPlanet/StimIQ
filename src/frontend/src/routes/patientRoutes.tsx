@@ -7,6 +7,8 @@ import { PatientFingerTappingTestSession } from '../patient/pages/PatientFingerT
 import { PatientDailyReport } from '../patient/pages/PatientDailyReport';
 import { PatientSpeechTaskStart } from '../patient/pages/PatientSpeechTaskStart';
 import { PatientSpeechTaskSession } from '../patient/pages/PatientSpeechTaskSession';
+import { ImuTrackingPage } from '../patient/pages/ImuTrackingPage';
+import { PatientAnalysisReportPage } from '../patient/pages/PatientAnalysisReportPage';
 
 /**
  * Patient view routes
@@ -48,5 +50,13 @@ export const patientRoutes = [
   {
     path: '/daily-report',
     element: <PatientDailyReport />,
+  },
+  {
+    path: '/imu-tracking',
+    element: <ImuTrackingPage />,
+  },
+  {
+    path: '/analysis-report',
+    element: <PatientAnalysisReportPage />,
   },
 ];

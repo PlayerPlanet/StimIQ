@@ -3,6 +3,8 @@ import type {
   PatientDetail,
   CreatePatientRequest,
   IMUUploadResponse,
+  IMUBatchPayload,
+  IMUBatchResponse,
   HypotheticalSimulationRequest,
   HypotheticalSimulationResponse,
   DbsTuningWithSimulationResponse,
@@ -340,3 +342,18 @@ export async function uploadSpeechRecordingRaw(data: {
   return response.json();
 }
 
+/**
+ * Upload a batch of IMU (accelerometer) samples.
+ * POST /api/patient/imu-batch
+ */
+export async function uploadIMUBatch(batch: IMUBatchPayload): Promise<IMUBatchResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/patient/imu-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(batch),
+  });
+  if (!response.ok) {
+    throw new Error(`IMU batch upload failed (HTTP ${response.status})`);
+  }
+  return response.json();
+}

@@ -24,6 +24,7 @@ export function PatientLayout({ children }: PatientLayoutProps) {
     { label: 'Overview', path: '/patient' },
     { label: 'Daily report', path: '/patient/daily-report' },
     { label: 'Standard tests', path: '/patient/standard-tests' },
+    { label: 'IMU Tracking', path: '/patient/imu-tracking' },
   ];
 
   const handleSendPrompt = async () => {

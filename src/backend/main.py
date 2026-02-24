@@ -10,6 +10,7 @@ from api import (
     auth_router,
     patients_router,
     imu_router,
+    imu_batch_router,
     prom_router,
     clinician_router,
     hand_tracking_router,
@@ -43,6 +44,7 @@ app.add_middleware(
         "http://127.0.0.1:5174",
         "http://127.0.0.1:5175",
         "https://stim-iq.vercel.app",
+        "https://stimiq.xyz",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -52,6 +54,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api")
 app.include_router(patients_router, prefix="/api", dependencies=[Depends(require_session)])
 app.include_router(imu_router, prefix="/api", dependencies=[Depends(require_session)])
+app.include_router(imu_batch_router, prefix="/api")  # No auth required for demo
 app.include_router(prom_router, prefix="/api", dependencies=[Depends(require_session)])
 app.include_router(clinician_router, prefix="/api", dependencies=[Depends(require_session)])
 app.include_router(hand_tracking_router, prefix="/api", dependencies=[Depends(require_session)])

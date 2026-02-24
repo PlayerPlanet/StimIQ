@@ -3,7 +3,9 @@ from fastapi import APIRouter, HTTPException, Query
 
 from database import get_supabase
 from .schemas import CreatePatientRequest, PatientResponse, PatientDetailResponse
+from .schemas import PatientAnalysisRequest, PatientAnalysisResponse
 from .services.patient_identity import is_auto_provisioned_visitor_patient
+from .services import generate_patient_analysis
 
 
 router = APIRouter(prefix="/patients", tags=["patients"])
@@ -104,3 +106,18 @@ async def get_patient(patient_id: UUID):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@router.post("/analysis-report", response_model=PatientAnalysisResponse)
+async def generate_analysis_report(payload: PatientAnalysisRequest):
+    """Generate an AI analysis report of patient PROM data using the DBS agent."""
+    try:
+        prom_dicts = [entry.model_dump() for entry in payload.prom_data]
+        analysis_text = generate_patient_analysis(
+            patient_id=payload.patient_id,
+            prom_data=prom_dicts,
+            patient_name=payload.patient_name,
+        )
+        return PatientAnalysisResponse(status="ok", analysis_text=analysis_text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate analysis: {str(e)}")

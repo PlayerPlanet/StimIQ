@@ -104,6 +104,26 @@ export function PatientDashboard() {
             <p className="text-lg text-text-main font-medium">Mar 12, 2026 at 10:30 AM</p>
           </Card>
 
+          <Card
+            hover
+            onClick={() => navigate('/patient/analysis-report')}
+            className="p-6 cursor-pointer"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="text-left md:text-left">
+                <h2 className="text-xl font-semibold text-text-main">Analysis Report for Doctor</h2>
+                <p className="text-text-muted text-sm">
+                  Generate an AI-powered PDF summary of your data to share with your care team.
+                </p>
+              </div>
+              <div className="flex justify-center md:justify-end">
+                <span className="px-3 py-1 rounded-full border text-sm font-semibold bg-green-100 text-green-800 border-green-200">
+                  Generate PDF
+                </span>
+              </div>
+            </div>
+          </Card>
+
           <Card className="p-5 text-left flex flex-col">
             <p className="text-xs uppercase tracking-wide text-text-muted font-semibold">
               Clinician message

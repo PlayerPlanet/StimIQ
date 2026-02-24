@@ -1,5 +1,5 @@
 from .patient import CreatePatientRequest, PatientResponse, PatientDetailResponse
-from .imu import IMUUploadResponse
+from .imu import IMUUploadResponse, IMUSampleIn, IMUBatchIn, IMUBatchResponse
 from .dbs_state import ChannelState, DailyTremorPoint, DailyPromPoint, DbsState
 from .dbs_tuning import ChannelRecommendation, DbsTuningRecommendation
 from .simulation import (
@@ -12,7 +12,7 @@ from .simulation import (
     OptimizationStepRequest,
     OptimizationStepResponse,
 )
-from .agent import AgentPromptRequest, AgentPromptResponse
+from .agent import AgentPromptRequest, AgentPromptResponse, PatientAnalysisRequest, PatientAnalysisResponse, PromDataEntry
 from .auth import SessionLoginRequest, SessionLoginResponse, SessionInfoResponse
 from .hand_tracking import (
     Point2D,
@@ -45,6 +45,9 @@ __all__ = [
     "PatientResponse",
     "PatientDetailResponse",
     "IMUUploadResponse",
+    "IMUSampleIn",
+    "IMUBatchIn",
+    "IMUBatchResponse",
     "ChannelState",
     "DailyTremorPoint",
     "DailyPromPoint",
@@ -61,6 +64,9 @@ __all__ = [
     "OptimizationStepResponse",
     "AgentPromptRequest",
     "AgentPromptResponse",
+    "PatientAnalysisRequest",
+    "PatientAnalysisResponse",
+    "PromDataEntry",
     "SessionLoginRequest",
     "SessionLoginResponse",
     "SessionInfoResponse",
