@@ -84,6 +84,32 @@ export const TREATMENT_GOAL_PRESETS: TreatmentGoalPreset[] = [
   },
 ];
 
+export type WeightKey = 'motor' | 'non_motor' | 'duration' | 'speech';
+
+export interface TreatmentGoals {
+  id?: string | null;
+  patient_id?: string;
+  w_motor?: number | null;
+  w_non_motor?: number | null;
+  w_duration?: number | null;
+  w_speech?: number | null;
+  non_motor_diary_ratio?: number | null;
+  notes?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface TreatmentGoalsRequest {
+  w_motor: number;
+  w_non_motor: number;
+  w_duration: number;
+  w_speech: number;
+  non_motor_diary_ratio: number;
+  notes?: string | null;
+}
+
+export type TreatmentGoalsPreset = TreatmentGoalPreset;
+
 export interface IMUUploadResponse {
   patient_id: string;
   bucket: string;

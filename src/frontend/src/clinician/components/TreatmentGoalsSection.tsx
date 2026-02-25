@@ -3,6 +3,7 @@ import { useTreatmentGoals } from '../useTreatmentGoals';
 import { Card } from '../../components/common/Card';
 import { LoadingState } from '../../components/common/LoadingState';
 import { TREATMENT_GOAL_PRESETS } from '../../lib/types';
+import type { WeightKey } from '../../lib/types';
 
 interface TreatmentGoalsSectionProps {
   patientId: string;
