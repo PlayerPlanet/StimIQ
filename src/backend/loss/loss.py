@@ -227,6 +227,15 @@ def _clip01(x: float) -> float:
     return float(np.clip(x, 0.0, 1.0))
 
 
+def _coerce_float(value: Any, default: float) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
 def _extract_goal_value(goals: Any, new_key: str, legacy_key: str, default: float) -> float:
     if goals is None:
         return default
@@ -586,30 +595,43 @@ def calculate_loss(
         treatment_goals,
         new_key="w_motor",
         legacy_key="w_diag",
-        default=float(patient_row.get("treatment_w_motor", DEFAULT_WEIGHT_MOTOR)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_MOTOR,
+        default=_coerce_float(
+            patient_row.get("treatment_w_motor") if isinstance(patient_row, dict) else None,
+            DEFAULT_WEIGHT_MOTOR,
+        ),
     )
     w_non_motor = _extract_goal_value(
         treatment_goals,
         new_key="w_non_motor",
         legacy_key="w_nms",
-        default=float(patient_row.get("treatment_w_non_motor", DEFAULT_WEIGHT_NON_MOTOR)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_NON_MOTOR,
+        default=_coerce_float(
+            patient_row.get("treatment_w_non_motor") if isinstance(patient_row, dict) else None,
+            DEFAULT_WEIGHT_NON_MOTOR,
+        ),
     )
     w_duration = _extract_goal_value(
         treatment_goals,
         new_key="w_duration",
         legacy_key="w_dur",
-        default=float(patient_row.get("treatment_w_duration", DEFAULT_WEIGHT_DURATION)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_DURATION,
+        default=_coerce_float(
+            patient_row.get("treatment_w_duration") if isinstance(patient_row, dict) else None,
+            DEFAULT_WEIGHT_DURATION,
+        ),
     )
     w_speech = _extract_goal_value(
         treatment_goals,
         new_key="w_speech",
         legacy_key="w_speech",
-        default=float(patient_row.get("treatment_w_speech", DEFAULT_WEIGHT_SPEECH)) if isinstance(patient_row, dict) else DEFAULT_WEIGHT_SPEECH,
+        default=_coerce_float(
+            patient_row.get("treatment_w_speech") if isinstance(patient_row, dict) else None,
+            DEFAULT_WEIGHT_SPEECH,
+        ),
     )
     diary_ratio_default = (
-        float(patient_row.get("treatment_non_motor_diary_ratio", DEFAULT_NON_MOTOR_DIARY_RATIO))
-        if isinstance(patient_row, dict)
-        else DEFAULT_NON_MOTOR_DIARY_RATIO
+        _coerce_float(
+            patient_row.get("treatment_non_motor_diary_ratio") if isinstance(patient_row, dict) else None,
+            DEFAULT_NON_MOTOR_DIARY_RATIO,
+        )
     )
     diary_ratio = _extract_non_motor_diary_ratio(treatment_goals, default=diary_ratio_default)
     w_motor, w_non_motor, w_duration, w_speech = _normalize_weights(w_motor, w_non_motor, w_duration, w_speech)

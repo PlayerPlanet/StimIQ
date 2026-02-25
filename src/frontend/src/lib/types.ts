@@ -44,6 +44,46 @@ export interface CreatePatientRequest {
   treatment_goals_notes?: string | null;
 }
 
+export interface TreatmentGoalPreset {
+  name: string;
+  description: string;
+  w_motor: number;
+  w_non_motor: number;
+  w_duration: number;
+  w_speech: number;
+  non_motor_diary_ratio: number;
+}
+
+export const TREATMENT_GOAL_PRESETS: TreatmentGoalPreset[] = [
+  {
+    name: 'default',
+    description: 'Balanced mix of motor, non-motor, and duration severity.',
+    w_motor: 0.33,
+    w_non_motor: 0.33,
+    w_duration: 0.34,
+    w_speech: 0.0,
+    non_motor_diary_ratio: 0.5,
+  },
+  {
+    name: 'motor_focused',
+    description: 'Prioritize motor symptoms (IMU-derived severity).',
+    w_motor: 0.6,
+    w_non_motor: 0.25,
+    w_duration: 0.15,
+    w_speech: 0.0,
+    non_motor_diary_ratio: 0.4,
+  },
+  {
+    name: 'quality_of_life_focused',
+    description: 'Prioritize non-motor symptoms and patient-reported outcomes.',
+    w_motor: 0.25,
+    w_non_motor: 0.6,
+    w_duration: 0.15,
+    w_speech: 0.0,
+    non_motor_diary_ratio: 0.7,
+  },
+];
+
 export interface IMUUploadResponse {
   patient_id: string;
   bucket: string;

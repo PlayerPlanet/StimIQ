@@ -10,7 +10,8 @@ export async function fetchTreatmentGoals(patientId: string): Promise<TreatmentG
     credentials: 'include',
   });
   if (!response.ok) {
-    throw new Error(`Failed to fetch treatment goals: ${response.status}`);
+    const body = await response.text();
+    throw new Error(`Failed to fetch treatment goals: ${response.status} ${body}`);
   }
   return response.json();
 }
@@ -31,7 +32,8 @@ export async function updateTreatmentGoals(
     body: JSON.stringify(goals),
   });
   if (!response.ok) {
-    throw new Error(`Failed to update treatment goals: ${response.status}`);
+    const body = await response.text();
+    throw new Error(`Failed to update treatment goals: ${response.status} ${body}`);
   }
   return response.json();
 }
@@ -44,7 +46,8 @@ export async function fetchTreatmentGoalPresets(): Promise<TreatmentGoalsPreset[
     credentials: 'include',
   });
   if (!response.ok) {
-    throw new Error(`Failed to fetch treatment goal presets: ${response.status}`);
+    const body = await response.text();
+    throw new Error(`Failed to fetch treatment goal presets: ${response.status} ${body}`);
   }
   return response.json();
 }

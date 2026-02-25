@@ -1,6 +1,7 @@
 """Treatment Goals API endpoints."""
 from typing import Any, cast
 from uuid import UUID
+import logging
 from fastapi import APIRouter, HTTPException
 
 from database import get_supabase
@@ -12,6 +13,7 @@ from .schemas.treatment_goals import (
 )
 
 router = APIRouter(prefix="/treatment-goals", tags=["treatment-goals"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/presets", response_model=list[TreatmentGoalsPreset])
@@ -27,7 +29,10 @@ async def get_treatment_goals(patient_id: UUID):
     
     try:
         response = supabase.table("patients") \
-            .select("id, created_at, updated_at, treatment_w_motor, treatment_w_non_motor, treatment_w_duration, treatment_w_speech, treatment_non_motor_diary_ratio, treatment_goals_notes") \
+            .select(
+                "id, created_at, treatment_w_motor, treatment_w_non_motor, treatment_w_duration, "
+                "treatment_w_speech, treatment_non_motor_diary_ratio, treatment_goals_notes"
+            ) \
             .eq("id", str(patient_id)) \
             .limit(1) \
             .execute()
@@ -65,6 +70,7 @@ async def get_treatment_goals(patient_id: UUID):
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Failed to fetch treatment goals for patient %s", patient_id)
         raise HTTPException(
             status_code=500,
             detail=f"Database error: {str(e)}"
@@ -117,6 +123,7 @@ async def update_treatment_goals(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Failed to update treatment goals for patient %s", patient_id)
         raise HTTPException(
             status_code=500,
             detail=f"Database error: {str(e)}"
