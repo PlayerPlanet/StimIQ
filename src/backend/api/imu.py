@@ -8,7 +8,9 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from config import get_settings
 from database import get_supabase
 from .schemas import IMUUploadResponse, IMUBatchIn, IMUBatchResponse
+from .schemas.imu_analysis import IMUAnalysisRequest, IMUAnalysisResponse
 from .services.imu import insert_imu_batch
+from .services.imu_signal_processing import analyze_imu_tremor
 
 
 logger = logging.getLogger(__name__)
@@ -121,4 +123,19 @@ async def upload_imu_batch(batch: IMUBatchIn):
         raise HTTPException(status_code=500, detail="Failed to insert IMU data")
     except Exception as e:
         logger.error(f"Unexpected error in IMU batch upload: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@batch_router.post("/analyze", response_model=IMUAnalysisResponse)
+async def analyze_imu_signal(payload: IMUAnalysisRequest):
+    try:
+        return analyze_imu_tremor(
+            user_id=payload.user_id,
+            start_time=payload.start_time,
+            end_time=payload.end_time,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error in IMU analysis: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

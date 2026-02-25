@@ -23,6 +23,7 @@ dependencies = [
     "pydantic>=2.9.0",
     "pydantic-settings>=2.0.0",
     "numpy>=2.4.2",
+    "scipy>=1.13.0",
     "sim",
     "scikit-learn>=1.8.0",
 ]

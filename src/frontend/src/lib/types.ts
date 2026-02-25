@@ -335,6 +335,50 @@ export interface SpeechRecordingUploadResponse {
 }
 
 // IMU / Accelerometer Types
+export interface IMUAnalysisRequest {
+  user_id: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface DataSegment {
+  start_time: string;
+  end_time: string;
+}
+
+export interface TimelineSegment {
+  start_time: string;
+  end_time: string;
+  is_gap: boolean;
+}
+
+export interface TimeIntensityPoint {
+  time: string;
+  intensity: number;
+}
+
+export interface SpectrumPoint {
+  frequency: number;
+  power: number;
+}
+
+export interface IMUAnalysisResponse {
+  dominant_frequency: number;
+  tremor_intensity: number;
+  tremor_activity_share: number;
+  mild_tremor_share: number;
+  medium_tremor_share: number;
+  intense_tremor_share: number;
+  average_event_duration_seconds: number;
+  total_datapoints: number;
+  data_segments: DataSegment[];
+  data_continuity_timeline: TimelineSegment[];
+  actual_start_time: string | null;
+  actual_end_time: string | null;
+  tremor_intensity_timeseries: TimeIntensityPoint[];
+  power_spectrum: SpectrumPoint[];
+}
+
 export interface IMUSample {
   timestamp: number;
   ax: number;

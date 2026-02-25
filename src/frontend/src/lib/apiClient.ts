@@ -5,6 +5,8 @@ import type {
   IMUUploadResponse,
   IMUBatchPayload,
   IMUBatchResponse,
+  IMUAnalysisRequest,
+  IMUAnalysisResponse,
   HypotheticalSimulationRequest,
   HypotheticalSimulationResponse,
   DbsTuningWithSimulationResponse,
@@ -107,6 +109,27 @@ export async function uploadIMU(
     body: formData,
   });
   if (!response.ok) throw new Error('Failed to upload IMU file');
+  return response.json();
+}
+
+/**
+ * Analyze IMU signal for tremor metrics
+ * POST /api/patient/analyze
+ */
+export async function analyzeIMUTremor(
+  data: IMUAnalysisRequest
+): Promise<IMUAnalysisResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/patient/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Failed to analyze IMU signal');
+  }
+
   return response.json();
 }
 
