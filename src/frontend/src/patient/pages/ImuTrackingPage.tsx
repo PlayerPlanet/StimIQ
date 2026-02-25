@@ -691,7 +691,12 @@ export function ImuTrackingPage() {
                         />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                          formatter={(value: number) => [value.toExponential(3), 'Intensity']}
+                          formatter={(value?: number | string) => {
+                            if (typeof value === 'number') {
+                              return [value.toExponential(3), 'Intensity'];
+                            }
+                            return [value ?? '—', 'Intensity'];
+                          }}
                         />
                         <ReferenceLine 
                           y={5.0} 
@@ -766,11 +771,14 @@ export function ImuTrackingPage() {
                         />
                         <Tooltip
                           contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                          formatter={(value: number, name: string) => {
-                            if (name === 'power') return [value.toExponential(3), 'Power'];
-                            return [value, name];
+                          formatter={(value?: number | string, name?: string) => {
+                            const label = name ?? 'Value';
+                            if (label === 'power' && typeof value === 'number') {
+                              return [value.toExponential(3), 'Power'];
+                            }
+                            return [value ?? '—', label];
                           }}
-                          labelFormatter={(value) => `${Number(value).toFixed(2)} Hz`}
+                          labelFormatter={(value) => `${Number(value ?? 0).toFixed(2)} Hz`}
                         />
                         <ReferenceLine 
                           x={4} 
