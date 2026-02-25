@@ -51,14 +51,8 @@ export function ClinicianOverview() {
               <li>Estimates a continuous severity signal rather than relying solely on categorical scales.</li>
               <li>Learns the response surface over DBS parameters.</li>
               <li>Uses Bayesian optimization to suggest parameter regions likely to reduce motor severity.</li>
+              <li>Enables setting personalized treatment goals.</li>
             </ol>
-            <p className="text-sm text-text-main mt-4 font-semibold">Current weighted objective (active):</p>
-            <ul className="mt-2 list-disc pl-5 text-sm text-text-muted space-y-1">
-              <li>Motor from wearable IMU movement features.</li>
-              <li>Non-motor from PROM diary + standardized tests (configurable diary-to-tests split).</li>
-              <li>Disease duration from time since diagnosis.</li>
-              <li>Speech severity weighting (placeholder until speech metrics are integrated).</li>
-            </ul>
             <p className="text-sm text-text-muted mt-4 leading-relaxed">
               The architecture separates a latent neural generator (capturing oscillatory dynamics), a biomechanical
               mapping to observable movement, a data-driven severity model, and an optimization loop operating over
@@ -176,7 +170,7 @@ export function ClinicianOverview() {
               <li>Patient performs standardized motor tasks (in clinic or remotely).</li>
               <li>IMU and optional video-derived features are processed.</li>
               <li>A severity estimate is computed.</li>
-              <li>The weighted objective is composed (motor + non-motor + duration) using patient-specific settings.</li>
+              <li>The severity objective is composed from motor, non-motor, and duration signals (weights optional).</li>
               <li>The system updates its parameter-response model.</li>
               <li>Suggested parameter adjustments are displayed with uncertainty bounds and current weighting intent.</li>
               <li>The clinician retains full control over final decisions.</li>
